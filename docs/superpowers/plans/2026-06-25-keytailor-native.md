@@ -6,7 +6,7 @@
 
 **Architecture:** Add a Swift package-style source tree with testable `KeyTailorCore` logic and a SwiftUI/AppKit `KeyTailorApp`. Keep the existing Node prototype intact while shifting README/docs and build output to the native app.
 
-**Tech Stack:** Swift 6.3 command-line tools, SwiftUI, AppKit, XCTest, existing Node tests for the legacy prototype.
+**Tech Stack:** Swift 6.3 command-line tools, SwiftUI, AppKit, a plain Swift `KeyTailorCoreCheck` executable for local verification, existing Node tests for the legacy prototype.
 
 ## Global Constraints
 
@@ -33,7 +33,7 @@
 - Create: `Sources/KeyTailorCore/ShortcutDefinition.swift`
 - Create: `Sources/KeyTailorCore/UsageTracker.swift`
 - Create: `Sources/KeyTailorCore/RecommendationEngine.swift`
-- Create: `Tests/KeyTailorCoreTests/KeyTailorCoreTests.swift`
+- Create: `Sources/KeyTailorCoreCheck/main.swift`
 
 **Interfaces:**
 - Produces: `ShortcutDefinition`
@@ -43,17 +43,17 @@
 - Produces: `UsageAccumulator.record(app:at:)`
 - Produces: `RecommendationEngine.recommendations(for:)`
 
-- [ ] Write failing XCTest coverage for custom shortcut JSON generation, risky Command-Q warning, usage accumulation, and Slack/browser recommendation ranking.
-- [ ] Run `swift test --filter KeyTailorCoreTests` and confirm missing type/function failures.
+- [ ] Write failing Swift check-runner coverage for custom shortcut JSON generation, risky Command-Q warning, usage accumulation, and Slack/browser recommendation ranking.
+- [ ] Run `swift run KeyTailorCoreCheck` and confirm missing type/function failures.
 - [ ] Implement the minimal Swift core models and engines.
-- [ ] Run `swift test --filter KeyTailorCoreTests` and confirm it passes.
+- [ ] Run `swift run KeyTailorCoreCheck` and confirm it passes.
 - [ ] Commit this task.
 
 ### Task 2: Karabiner Config Service
 
 **Files:**
 - Create: `Sources/KeyTailorCore/KarabinerConfigService.swift`
-- Modify: `Tests/KeyTailorCoreTests/KeyTailorCoreTests.swift`
+- Modify: `Sources/KeyTailorCoreCheck/main.swift`
 
 **Interfaces:**
 - Produces: `KarabinerConfigService.readStatus()`
@@ -61,10 +61,10 @@
 - Produces: `KarabinerConfigService.applyCustomShortcuts(_:)`
 - Produces: `KarabinerConfigService.applyRecommendedPacks(_:)`
 
-- [ ] Write failing XCTest coverage that applying custom shortcuts preserves recommended rules and creates a backup in a temporary config directory.
-- [ ] Run `swift test --filter KeyTailorCoreTests` and confirm the new test fails due to missing service behavior.
+- [ ] Write failing Swift check-runner coverage that applying custom shortcuts preserves recommended rules and creates a backup in a temporary config directory.
+- [ ] Run `swift run KeyTailorCoreCheck` and confirm the new check fails due to missing service behavior.
 - [ ] Implement file read/write, backup creation, category-aware starter rule merging, and basic conflict detection.
-- [ ] Run `swift test --filter KeyTailorCoreTests`.
+- [ ] Run `swift run KeyTailorCoreCheck`.
 - [ ] Commit this task.
 
 ### Task 3: Native SwiftUI App
@@ -120,7 +120,7 @@
 
 - [ ] Update docs with native app build/run steps, privacy disclosure, recommendations, and Shortcut Studio behavior.
 - [ ] Add npm scripts if useful for checking the legacy prototype and Swift tests together.
-- [ ] Run `swift test`.
+- [ ] Run `swift run KeyTailorCoreCheck`.
 - [ ] Run `./build.sh`.
 - [ ] Run `npm test`.
 - [ ] Run `npm run lint`.
