@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Karabiner Starter</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell" aria-label="Karabiner Starter setup tool">
+      <header class="topbar">
+        <div class="window-controls" aria-hidden="true">
+          <span class="control control-close"></span>
+          <span class="control control-minimize"></span>
+          <span class="control control-zoom"></span>
+        </div>
+
+        <div class="title-block">
+          <p class="eyebrow">Karabiner Starter</p>
+          <h1>Local setup</h1>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="sync-state" id="syncState">Checking...</span>
+          <button class="icon-button" id="refreshButton" type="button" aria-label="Refresh status" title="Refresh status">
+            <span aria-hidden="true">&#8635;</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="workspace" aria-label="Setup workspace">
+        <aside class="panel status-panel" aria-labelledby="setup-status-heading">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Setup status</p>
+              <h2 id="setup-status-heading">System check</h2>
+            </div>
+            <span class="status-pill" id="overallStatus">
+              <span class="status-dot is-checking" id="overallDot"></span>
+              <span id="overallText">Checking</span>
+            </span>
+          </div>
+
+          <dl class="status-grid">
+            <div>
+              <dt>Karabiner</dt>
+              <dd id="karabinerState">Checking...</dd>
+            </div>
+            <div>
+              <dt>Version</dt>
+              <dd id="versionState">Unknown</dd>
+            </div>
+            <div>
+              <dt>Homebrew</dt>
+              <dd id="homebrewState">Checking...</dd>
+            </div>
+            <div>
+              <dt>Profile</dt>
+              <dd id="profileState">Unknown</dd>
+            </div>
+          </dl>
+
+          <div class="permission-path" aria-label="Setup path">
+            <div class="path-step" id="installStep">
+              <span></span>
+              <strong>Install</strong>
+            </div>
+            <div class="path-step" id="permissionStep">
+              <span></span>
+              <strong>Permissions</strong>
+            </div>
+            <div class="path-step" id="presetStep">
+              <span></span>
+              <strong>Presets</strong>
+            </div>
+          </div>
+
+          <div class="action-stack">
+            <button class="button primary" id="installButton" type="button">Install Karabiner</button>
+            <button class="button" id="settingsButton" type="button">Open Settings</button>
+            <button class="button subtle" id="downloadButton" type="button">Open Download</button>
+          </div>
+        </aside>
+
+        <section class="panel presets-panel" aria-labelledby="presets-heading">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Starter presets</p>
+              <h2 id="presets-heading">Rules to apply</h2>
+            </div>
+            <span class="count-pill" id="presetCount">0 selected</span>
+          </div>
+
+          <div class="preset-list" id="presetList" aria-live="polite">
+            <div class="empty-state">Loading presets...</div>
+          </div>
+        </section>
+
+        <aside class="side-rail" aria-label="Safety and activity">
+          <section class="panel warning-panel" aria-labelledby="warnings-heading">
+            <div class="panel-heading compact">
+              <div>
+                <p class="section-kicker">Warnings</p>
+                <h2 id="warnings-heading">Conflict check</h2>
+              </div>
+              <span class="count-pill" id="warningCount">0</span>
+            </div>
+
+            <div class="warning-list" id="warningList" aria-live="polite">
+              <div class="empty-state">Checking for conflicts...</div>
+            </div>
+          </section>
+
+          <section class="panel apply-panel" aria-labelledby="apply-heading">
+            <div class="panel-heading compact">
+              <div>
+                <p class="section-kicker">Backup &amp; apply</p>
+                <h2 id="apply-heading">Write starter rules</h2>
+              </div>
+            </div>
+
+            <p class="apply-hint" id="applyHint">Select presets, create a backup, then apply changes to the current profile.</p>
+
+            <div class="split-actions">
+              <button class="button" id="backupButton" type="button">Back up config</button>
+              <button class="button primary" id="applyButton" type="button">Apply selected</button>
+            </div>
+          </section>
+
+          <section class="panel restore-panel" aria-labelledby="restore-heading">
+            <div class="panel-heading compact">
+              <div>
+                <p class="section-kicker">Rollback</p>
+                <h2 id="restore-heading">Restore backup</h2>
+              </div>
+              <button class="text-button" id="refreshBackupsButton" type="button">Refresh</button>
+            </div>
+
+            <div class="backup-list" id="backupList" aria-live="polite">
+              <div class="empty-state">Loading backups...</div>
+            </div>
+
+            <button class="button restore-button" id="restoreButton" type="button">Restore selected</button>
+          </section>
+
+          <section class="panel log-panel" aria-labelledby="activity-heading">
+            <div class="panel-heading compact">
+              <div>
+                <p class="section-kicker">Activity log</p>
+                <h2 id="activity-heading">Recent events</h2>
+              </div>
+              <button class="text-button" id="clearLogButton" type="button">Clear</button>
+            </div>
+
+            <ol class="activity-log" id="activityLog" aria-live="polite"></ol>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
