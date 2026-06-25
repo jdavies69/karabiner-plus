@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add opt-in local usage tracking, app-based shortcut recommendations, and a safe global custom shortcut creator to Karabiner Starter.
+**Goal:** Add opt-in local usage tracking, app-based shortcut recommendations, and a safe global custom shortcut creator to Karabiner+.
 
 **Architecture:** Keep Karabiner writes in `src/core` and `src/server.js`; keep usage accumulation in the browser so tracking stops when the page closes; keep recommendation and shortcut rule generation in pure core modules with tests. Update the desktop UI to expose Setup Companion, Shortcut Coach, Shortcut Studio, and Safety panels without adding a mobile layout.
 
@@ -11,13 +11,13 @@
 ## Global Constraints
 
 - macOS only.
-- Tracking runs only while the Karabiner Starter page is open and after the user presses Start.
+- Tracking runs only while the Karabiner+ page is open and after the user presses Start.
 - Tracking stores only app name, bundle id when available, active time estimate, and last seen timestamp.
 - Tracking does not store keystrokes, window titles, document contents, or cloud data.
 - Usage history is stored in browser `localStorage` and can be deleted from the UI.
 - All Karabiner config writes require an existing Karabiner config file.
 - Every Karabiner config write creates a backup first.
-- Preset apply must not delete custom or recommended Karabiner Starter rules.
+- Preset apply must not delete custom or recommended Karabiner+ rules.
 - Custom Shortcut V1 creates global shortcuts only.
 - Avoid raw Karabiner JSON editing in the UI.
 - Keep the app desktop-only; no mobile layout.
@@ -35,10 +35,10 @@
 - Produces: `mergeOwnedRules(config, newRules, ownedPrefix)`
 - Updates: `mergeStarterRules(config, starterRules)` to replace only preset-owned rules
 
-- [ ] Write failing tests proving preset merge preserves `[Karabiner Starter] Custom:` and `[Karabiner Starter] Recommended:` rules.
+- [ ] Write failing tests proving preset merge preserves `[Karabiner+] Custom:` and `[Karabiner+] Recommended:` rules.
 - [ ] Run `npm test -- test/config.test.js` and confirm the new test fails because current merge removes every starter-owned rule.
 - [ ] Implement category-aware ownership prefixes and `mergeOwnedRules`.
-- [ ] Update `collectExistingTriggers` so all Karabiner Starter owned rules are ignored when checking conflicts against user-owned rules.
+- [ ] Update `collectExistingTriggers` so all Karabiner+ owned rules are ignored when checking conflicts against user-owned rules.
 - [ ] Run `npm test -- test/config.test.js` and confirm it passes.
 - [ ] Commit this task.
 
@@ -125,7 +125,7 @@
 **Files:**
 - Modify: `README.md`
 - Modify: `docs/usage.md`
-- Modify: `docs/superpowers/specs/2026-06-25-karabiner-starter-design.md`
+- Modify: `docs/superpowers/specs/2026-06-25-karabiner-plus-design.md`
 
 **Interfaces:**
 - Documents the tracker disclosure, local-only behavior, custom shortcut limits, recommendations, and backup safety.

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Karabiner Starter should become a local Mac shortcut coach: it helps a trusted user set up Karabiner, optionally learn which apps they actively use while the setup page is open, recommend useful shortcut packs, and create safe custom shortcuts without writing Karabiner JSON.
+Karabiner+ should become a local Mac shortcut coach: it helps a trusted user set up Karabiner, optionally learn which apps they actively use while the setup page is open, recommend useful shortcut packs, and create safe custom shortcuts without writing Karabiner JSON.
 
 ## Product Positioning
 
@@ -16,7 +16,7 @@ The design principle is: make the 20 percent of keyboard customization that norm
 
 ## Usage Tracking V1
 
-Usage tracking is opt-in and only runs while the Karabiner Starter page is open. The UI must disclose exactly what is collected before the user starts tracking:
+Usage tracking is opt-in and only runs while the Karabiner+ page is open. The UI must disclose exactly what is collected before the user starts tracking:
 
 - active app name
 - bundle identifier when available
@@ -70,7 +70,7 @@ The user can choose:
 
 The app shows a plain-English preview before applying. The server validates the definition, builds a Karabiner complex modification rule, checks conflicts against existing non-owned rules and selected new rules, creates a backup, and writes the config atomically.
 
-Custom rule descriptions use `[Karabiner Starter] Custom:`. Recommendation rules use `[Karabiner Starter] Recommended:`. Preset rules keep their existing `[Karabiner Starter]` descriptions but the merge logic must become category-aware so applying presets does not delete custom or recommended rules.
+Custom rule descriptions use `[Karabiner+] Custom:`. Recommendation rules use `[Karabiner+] Recommended:`. Preset rules keep their existing `[Karabiner+]` descriptions but the merge logic must become category-aware so applying presets does not delete custom or recommended rules.
 
 ## Safety
 

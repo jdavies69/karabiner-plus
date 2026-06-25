@@ -17,7 +17,7 @@ import {
   createSystemStatus,
   installKarabinerWithHomebrew,
 } from "./core/system.js";
-import { createKarabinerStarterServer } from "./server.js";
+import { createKarabinerPlusServer } from "./server.js";
 
 const configDir = join(homedir(), ".config", "karabiner");
 const configPath = join(configDir, "karabiner.json");
@@ -96,7 +96,7 @@ export async function main(argv = process.argv.slice(2), io = process) {
 }
 
 function usage() {
-  return `Usage: karabiner-starter <command>
+  return `Usage: karabiner-plus <command>
 
 Commands:
   start              Launch the local setup UI
@@ -104,7 +104,7 @@ Commands:
   status             Print install/status diagnostics
   presets            List available presets
   backup             Back up ~/.config/karabiner/karabiner.json
-  backups            List available Karabiner Starter backups
+  backups            List available Karabiner+ backups
   restore <path>     Restore a backup and create a pre-restore backup
   apply <ids...>     Apply starter presets by id
   install-karabiner  Install official Karabiner-Elements via Homebrew`;
@@ -141,11 +141,11 @@ async function applyPresets(presetIds, io) {
 }
 
 function startServer() {
-  const server = createKarabinerStarterServer();
+  const server = createKarabinerPlusServer();
   server.listen(0, "127.0.0.1", () => {
     const { port } = server.address();
     const url = `http://127.0.0.1:${port}/`;
-    console.log(`Karabiner Starter is running at ${url}`);
+    console.log(`Karabiner+ is running at ${url}`);
     openUrl(url);
   });
   return 0;

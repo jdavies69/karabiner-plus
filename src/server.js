@@ -37,7 +37,7 @@ const defaultConfigDir = join(homedir(), ".config", "karabiner");
 const defaultConfigPath = join(defaultConfigDir, "karabiner.json");
 const defaultBackupDir = join(defaultConfigDir, "backups");
 
-export function createKarabinerStarterServer({
+export function createKarabinerPlusServer({
   configPath = defaultConfigPath,
   backupDir = defaultBackupDir,
   statusProvider = createSystemStatus,

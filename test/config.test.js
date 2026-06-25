@@ -179,7 +179,7 @@ test("mergeStarterRules preserves starter custom and recommended rules", () => {
 
   selectedProfile.complex_modifications.rules.push(
     {
-      description: "[Karabiner Starter] Custom: Keep this rule",
+      description: "[Karabiner+] Custom: Keep this rule",
       manipulators: [
         {
           type: "basic",
@@ -189,7 +189,7 @@ test("mergeStarterRules preserves starter custom and recommended rules", () => {
       ],
     },
     {
-      description: "[Karabiner Starter] Recommended: Keep this rule",
+      description: "[Karabiner+] Recommended: Keep this rule",
       manipulators: [
         {
           type: "basic",
@@ -215,9 +215,9 @@ test("mergeStarterRules preserves starter custom and recommended rules", () => {
   const rules = result.config.profiles[0].complex_modifications.rules;
   assert.equal(result.changed, true);
   assert.equal(rules.length, 3);
-  assert.ok(rules.some((rule) => rule.description === "[Karabiner Starter] Custom: Keep this rule"));
+  assert.ok(rules.some((rule) => rule.description === "[Karabiner+] Custom: Keep this rule"));
   assert.ok(
-    rules.some((rule) => rule.description === "[Karabiner Starter] Recommended: Keep this rule")
+    rules.some((rule) => rule.description === "[Karabiner+] Recommended: Keep this rule")
   );
   assert.ok(!rules.some((rule) => rule.description === `${STARTER_RULE_PREFIX} Old preset rule`));
 });
@@ -269,7 +269,7 @@ test("collectExistingTriggers ignores starter custom and recommended rules", () 
 
   selectedProfile.complex_modifications.rules.push(
     {
-      description: "[Karabiner Starter] Custom: Starter right command h",
+      description: "[Karabiner+] Custom: Starter right command h",
       manipulators: [
         {
           type: "basic",
@@ -282,7 +282,7 @@ test("collectExistingTriggers ignores starter custom and recommended rules", () 
       ],
     },
     {
-      description: "[Karabiner Starter] Recommended: Starter right command j",
+      description: "[Karabiner+] Recommended: Starter right command j",
       manipulators: [
         {
           type: "basic",
@@ -317,7 +317,7 @@ test("collectExistingTriggers includes simple modifications", () => {
 });
 
 test("backupConfig writes a timestamped copy", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-"));
 
   try {
     const sourcePath = join(dir, "karabiner.json");

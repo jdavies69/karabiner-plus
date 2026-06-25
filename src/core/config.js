@@ -3,10 +3,13 @@ import { basename, dirname, join } from "node:path";
 
 import { triggersForRule } from "./conflicts.js";
 
-export const STARTER_RULE_PREFIX = "[Karabiner Starter]";
+export const STARTER_RULE_PREFIX = "[Karabiner+]";
 export const STARTER_PRESET_PREFIX = STARTER_RULE_PREFIX;
-export const STARTER_CUSTOM_PREFIX = "[Karabiner Starter] Custom:";
-export const STARTER_RECOMMENDED_PREFIX = "[Karabiner Starter] Recommended:";
+export const STARTER_CUSTOM_PREFIX = "[Karabiner+] Custom:";
+export const STARTER_RECOMMENDED_PREFIX = "[Karabiner+] Recommended:";
+const LEGACY_RULE_PREFIX = "[Karabiner Starter]";
+const LEGACY_CUSTOM_PREFIX = "[Karabiner Starter] Custom:";
+const LEGACY_RECOMMENDED_PREFIX = "[Karabiner Starter] Recommended:";
 
 export function buildDefaultConfig() {
   return {
@@ -198,7 +201,10 @@ function isStarterOwnedRule(rule) {
   return (
     description.startsWith(STARTER_PRESET_PREFIX) ||
     description.startsWith(STARTER_CUSTOM_PREFIX) ||
-    description.startsWith(STARTER_RECOMMENDED_PREFIX)
+    description.startsWith(STARTER_RECOMMENDED_PREFIX) ||
+    description.startsWith(LEGACY_RULE_PREFIX) ||
+    description.startsWith(LEGACY_CUSTOM_PREFIX) ||
+    description.startsWith(LEGACY_RECOMMENDED_PREFIX)
   );
 }
 
@@ -207,9 +213,22 @@ function isOwnedRule(rule, ownedPrefix) {
 
   if (ownedPrefix === STARTER_PRESET_PREFIX) {
     return (
-      description.startsWith(STARTER_RULE_PREFIX) &&
+      (description.startsWith(STARTER_RULE_PREFIX) || description.startsWith(LEGACY_RULE_PREFIX)) &&
       !description.startsWith(STARTER_CUSTOM_PREFIX) &&
-      !description.startsWith(STARTER_RECOMMENDED_PREFIX)
+      !description.startsWith(STARTER_RECOMMENDED_PREFIX) &&
+      !description.startsWith(LEGACY_CUSTOM_PREFIX) &&
+      !description.startsWith(LEGACY_RECOMMENDED_PREFIX)
+    );
+  }
+
+  if (ownedPrefix === STARTER_CUSTOM_PREFIX) {
+    return description.startsWith(STARTER_CUSTOM_PREFIX) || description.startsWith(LEGACY_CUSTOM_PREFIX);
+  }
+
+  if (ownedPrefix === STARTER_RECOMMENDED_PREFIX) {
+    return (
+      description.startsWith(STARTER_RECOMMENDED_PREFIX) ||
+      description.startsWith(LEGACY_RECOMMENDED_PREFIX)
     );
   }
 

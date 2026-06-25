@@ -12,13 +12,13 @@ You need:
 - Homebrew if you want one-click install from the setup page.
 - Admin access to approve Karabiner-Elements permissions in macOS Settings.
 
-Karabiner Starter does not ship its own keyboard driver. Karabiner-Elements handles the real keyboard remapping.
+Karabiner+ does not ship its own keyboard driver. Karabiner-Elements handles the real keyboard remapping.
 
 ## Run It
 
 ```bash
-git clone https://github.com/jdavies69/karabiner-starter.git
-cd karabiner-starter
+git clone https://github.com/jdavies69/karabiner-plus.git
+cd karabiner-plus
 npm start
 ```
 
@@ -40,7 +40,7 @@ Open the local URL shown in Terminal if your browser does not open automatically
 - Right Command navigation: Right Command + H/J/K/L sends left/down/up/right arrows.
 - Right Command forward delete: Right Command + Delete sends forward delete.
 
-Starter rules are labeled with `[Karabiner Starter]`. Reapplying presets replaces those starter rules without intentionally touching your other Karabiner rules.
+Starter rules are labeled with `[Karabiner+]`. Reapplying presets replaces those starter rules without intentionally touching your other Karabiner rules.
 
 ## Rollback
 
@@ -58,7 +58,7 @@ To roll back from the setup page, choose a backup in Restore backup and click Re
 
 Karabiner-Elements usually reloads automatically. If not, open Karabiner Settings or restart Karabiner-Elements.
 
-You can also remove individual starter rules in Karabiner Settings under Complex Modifications. Look for rules beginning with `[Karabiner Starter]`.
+You can also remove individual starter rules in Karabiner Settings under Complex Modifications. Look for rules beginning with `[Karabiner+]`.
 
 ## Known Limitations
 

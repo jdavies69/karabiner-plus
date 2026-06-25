@@ -32,7 +32,7 @@ test("buildCustomShortcutRule creates a global Karabiner rule with the starter p
   });
 
   assert.deepEqual(rule, {
-    description: "[Karabiner Starter] Custom: Launch Terminal",
+    description: "[Karabiner+] Custom: Launch Terminal",
     manipulators: [
       {
         type: "basic",
@@ -159,6 +159,6 @@ test("planCustomShortcutApplication preserves other starter-owned rules", () => 
   );
   assert.equal(
     result.config.profiles[0].complex_modifications.rules[1].description,
-    "[Karabiner Starter] Custom: New custom"
+    "[Karabiner+] Custom: New custom"
   );
 });

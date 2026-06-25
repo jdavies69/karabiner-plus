@@ -83,7 +83,7 @@ test("rulesForRecommendationIds returns recommended rules with app conditions", 
   const rules = rulesForRecommendationIds(["slack"]);
 
   assert.equal(rules.length, 1);
-  assert.equal(rules[0].description, "[Karabiner Starter] Recommended: Slack");
+  assert.equal(rules[0].description, "[Karabiner+] Recommended: Slack");
   assert.deepEqual(rules[0].conditions, [
     {
       type: "frontmost_application_if",

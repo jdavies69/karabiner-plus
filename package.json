@@ -1,10 +1,10 @@
 {
-  "name": "karabiner-starter",
+  "name": "karabiner-plus",
   "version": "0.1.0",
   "description": "A personal onboarding app that installs official Karabiner-Elements and applies safe starter presets.",
   "type": "module",
   "bin": {
-    "karabiner-starter": "./src/cli.js"
+    "karabiner-plus": "./src/cli.js"
   },
   "scripts": {
     "start": "node ./src/cli.js start",

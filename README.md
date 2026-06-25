@@ -1,6 +1,6 @@
-# Karabiner Starter
+# Karabiner+
 
-Karabiner Starter is a small macOS setup helper for friends who want a few safe keyboard tweaks without learning Karabiner-Elements first.
+Karabiner+ is a small macOS setup helper for friends who want a few safe keyboard tweaks without learning Karabiner-Elements first.
 
 It does not bundle, fork, or replace Karabiner. It installs and configures the official [Karabiner-Elements](https://karabiner-elements.pqrs.org/) app, then writes starter rules to your local Karabiner config.
 
@@ -23,8 +23,8 @@ It does not bundle, fork, or replace Karabiner. It installs and configures the o
 ## Start
 
 ```bash
-git clone https://github.com/jdavies69/karabiner-starter.git
-cd karabiner-starter
+git clone https://github.com/jdavies69/karabiner-plus.git
+cd karabiner-plus
 npm start
 ```
 
@@ -42,7 +42,7 @@ More detail: [docs/usage.md](docs/usage.md).
 
 ## Backup And Rollback
 
-Before changing your Karabiner config, Karabiner Starter creates a timestamped backup in:
+Before changing your Karabiner config, Karabiner+ creates a timestamped backup in:
 
 ```text
 ~/.config/karabiner/backups/

@@ -2,29 +2,29 @@
 import PackageDescription
 
 let package = Package(
-    name: "KeyTailor",
+    name: "KarabinerPlus",
     platforms: [
         .macOS(.v14),
     ],
     products: [
         .library(
-            name: "KeyTailorCore",
-            targets: ["KeyTailorCore"]
+            name: "KarabinerPlusCore",
+            targets: ["KarabinerPlusCore"]
         ),
         .executable(
-            name: "KeyTailorCoreCheck",
-            targets: ["KeyTailorCoreCheck"]
+            name: "KarabinerPlusCoreCheck",
+            targets: ["KarabinerPlusCoreCheck"]
         ),
     ],
     targets: [
         .target(
-            name: "KeyTailorCore",
-            path: "Sources/KeyTailorCore"
+            name: "KarabinerPlusCore",
+            path: "Sources/KarabinerPlusCore"
         ),
         .executableTarget(
-            name: "KeyTailorCoreCheck",
-            dependencies: ["KeyTailorCore"],
-            path: "Sources/KeyTailorCoreCheck"
+            name: "KarabinerPlusCoreCheck",
+            dependencies: ["KarabinerPlusCore"],
+            path: "Sources/KarabinerPlusCoreCheck"
         ),
     ]
 )

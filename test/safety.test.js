@@ -13,7 +13,7 @@ import {
 } from "../src/core/config.js";
 
 test("writeKarabinerConfig writes parseable JSON and leaves no temp files", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-atomic-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-atomic-"));
 
   try {
     const configPath = join(dir, "karabiner.json");
@@ -30,7 +30,7 @@ test("writeKarabinerConfig writes parseable JSON and leaves no temp files", asyn
 });
 
 test("listBackups returns newest backups first", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-backups-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-backups-"));
 
   try {
     const sourcePath = join(dir, "karabiner.json");
@@ -57,7 +57,7 @@ test("listBackups returns newest backups first", async () => {
 });
 
 test("restoreBackup creates pre-restore backup and restores selected backup", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-restore-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-restore-"));
 
   try {
     const configPath = join(dir, "karabiner.json");

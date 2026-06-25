@@ -30,7 +30,7 @@ test("planPresetApplication blocks when a selected preset conflicts with existin
       trigger: "key:h|mods:right_command",
       rules: [
         "Custom Right Command H",
-        "[Karabiner Starter] Right Command + H/J/K/L navigation",
+        "[Karabiner+] Right Command + H/J/K/L navigation",
       ],
     },
   ]);

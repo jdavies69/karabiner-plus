@@ -1,12 +1,12 @@
-# Karabiner Starter Design
+# Karabiner+ Design
 
 ## Goal
 
-Karabiner Starter is a small personal onboarding app for macOS that helps a user install official Karabiner-Elements, understand setup status, apply safe starter presets, and avoid obvious shortcut conflicts.
+Karabiner+ is a small personal onboarding app for macOS that helps a user install official Karabiner-Elements, understand setup status, apply safe starter presets, and avoid obvious shortcut conflicts.
 
 ## Product Shape
 
-The app is a standalone companion, not a Karabiner fork. It uses official Karabiner-Elements for the driver, background services, EventViewer, and settings window. Karabiner Starter owns only onboarding, local checks, backups, preset generation, and configuration writes.
+The app is a standalone companion, not a Karabiner fork. It uses official Karabiner-Elements for the driver, background services, EventViewer, and settings window. Karabiner+ owns only onboarding, local checks, backups, preset generation, and configuration writes.
 
 The first version ships as a GitHub repo with one entry point:
 
@@ -34,7 +34,7 @@ Initial presets are deliberately conservative:
 - Right Command + H/J/K/L: arrow navigation.
 - Right Command + Delete: forward delete.
 
-Each generated rule description starts with `[Karabiner Starter]`, so the app can replace its own rules without touching user-created or imported rules.
+Each generated rule description starts with `[Karabiner+]`, so the app can replace its own rules without touching user-created or imported rules.
 
 ## Conflict Handling
 

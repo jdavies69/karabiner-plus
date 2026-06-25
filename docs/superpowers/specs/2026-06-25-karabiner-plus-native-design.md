@@ -1,25 +1,25 @@
-# KeyTailor Native App Design
+# Karabiner+ Native App Design
 
 ## Goal
 
-KeyTailor is a native macOS windowed app that makes Karabiner-Elements approachable: install/open official Karabiner, show setup status, track active-app usage only while the app is open and explicitly enabled, recommend useful shortcut packs, and create safe custom global shortcuts.
+Karabiner+ is a native macOS windowed app that makes Karabiner-Elements approachable: install/open official Karabiner, show setup status, track active-app usage only while the app is open and explicitly enabled, recommend useful shortcut packs, and create safe custom global shortcuts.
 
 ## Product Shape
 
 The app is not a menu bar utility. MacBook menu bars are crowded, and this product has enough workflow to deserve a real window. The first native version should open directly into the working app, not a landing page.
 
-The app name is **KeyTailor**. It keeps Karabiner visible in copy where needed, but the friend-facing product is a calmer, more memorable helper for tailoring keyboard behavior.
+The app name is **Karabiner+**. It keeps Karabiner visible in copy where needed, but the friend-facing product is a calmer, more memorable helper for tailoring keyboard behavior.
 
 ## Architecture
 
 Use a Swift-first structure:
 
-- `Sources/KeyTailorCore`: testable Swift models and services for Karabiner config, shortcuts, recommendations, usage, and system status.
-- `Sources/KeyTailorApp`: SwiftUI/AppKit windowed macOS application.
-- `Tests/KeyTailorCoreTests`: XCTest coverage for config merging, shortcut generation, recommendations, and usage accumulation.
-- `build.sh`: compiles `build/KeyTailor.app` using local Swift command-line tools.
+- `Sources/KarabinerPlusCore`: testable Swift models and services for Karabiner config, shortcuts, recommendations, usage, and system status.
+- `Sources/KarabinerPlusApp`: SwiftUI/AppKit windowed macOS application.
+- `Tests/KarabinerPlusCoreTests`: XCTest coverage for config merging, shortcut generation, recommendations, and usage accumulation.
+- `build.sh`: compiles `build/Karabiner+.app` using local Swift command-line tools.
 
-Keep the current Node/browser prototype in the repo as a reference and fallback, but the primary documented path becomes native KeyTailor.
+Keep the current Node/browser prototype in the repo as a reference and fallback, but the primary documented path becomes native Karabiner+.
 
 ## Native Experience
 
@@ -46,16 +46,16 @@ All config writes require an existing `~/.config/karabiner/karabiner.json`. Ever
 
 ## Shortcut Coach
 
-Usage tracking is opt-in. It runs only while KeyTailor is open and the user has enabled tracking.
+Usage tracking is opt-in. It runs only while Karabiner+ is open and the user has enabled tracking.
 
-The disclosure says KeyTailor tracks:
+The disclosure says Karabiner+ tracks:
 
 - active app name
 - bundle identifier when available
 - active time estimate
 - last seen time
 
-The disclosure also says KeyTailor does not track:
+The disclosure also says Karabiner+ does not track:
 
 - keystrokes
 - window titles
@@ -76,7 +76,7 @@ The app ships with static app-aware packs:
 - Media
 - Preview
 
-Recommendations rank by tracked time and known app match. Applying recommendations writes `[Karabiner Starter] Recommended:` rules with Karabiner `frontmost_application_if` conditions.
+Recommendations rank by tracked time and known app match. Applying recommendations writes `[Karabiner+] Recommended:` rules with Karabiner `frontmost_application_if` conditions.
 
 ## Shortcut Studio
 
@@ -90,7 +90,7 @@ V1 creates global shortcuts only:
 - plain-English preview
 - warning for risky global Command shortcuts
 
-Applying custom shortcuts writes `[Karabiner Starter] Custom:` rules. Applying presets must not delete custom or recommended rules.
+Applying custom shortcuts writes `[Karabiner+] Custom:` rules. Applying presets must not delete custom or recommended rules.
 
 ## Out Of Scope
 

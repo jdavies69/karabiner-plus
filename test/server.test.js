@@ -5,10 +5,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { buildDefaultConfig } from "../src/core/config.js";
-import { createKarabinerStarterServer } from "../src/server.js";
+import { createKarabinerPlusServer } from "../src/server.js";
 
 test("serves static HTML at the root route", async () => {
-  const server = createKarabinerStarterServer();
+  const server = createKarabinerPlusServer();
   const baseUrl = await listen(server);
 
   try {
@@ -19,7 +19,7 @@ test("serves static HTML at the root route", async () => {
 
     const body = await response.text();
     assert.match(body, /<html[\s>]/i);
-    assert.match(body, /Karabiner Starter/i);
+    assert.match(body, /Karabiner+/i);
     assert.match(body, /Restore backup/i);
   } finally {
     await close(server);
@@ -27,7 +27,7 @@ test("serves static HTML at the root route", async () => {
 });
 
 test("POST /api/apply returns conflicts without writing colliding presets", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-server-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-server-"));
 
   try {
     const configPath = join(dir, "karabiner.json");
@@ -54,7 +54,7 @@ test("POST /api/apply returns conflicts without writing colliding presets", asyn
     const originalConfigText = `${JSON.stringify(config, null, 2)}\n`;
     await writeFile(configPath, originalConfigText, "utf8");
 
-    const server = createKarabinerStarterServer({ configPath, backupDir });
+    const server = createKarabinerPlusServer({ configPath, backupDir });
     const baseUrl = await listen(server);
 
     try {
@@ -76,7 +76,7 @@ test("POST /api/apply returns conflicts without writing colliding presets", asyn
           trigger: "key:h|mods:right_command",
           rules: [
             "User right command h",
-            "[Karabiner Starter] Right Command + H/J/K/L navigation",
+            "[Karabiner+] Right Command + H/J/K/L navigation",
           ],
         },
       ]);
@@ -90,12 +90,12 @@ test("POST /api/apply returns conflicts without writing colliding presets", asyn
 });
 
 test("POST /api/apply requires an existing Karabiner config", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-first-run-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-first-run-"));
 
   try {
     const configPath = join(dir, "missing-karabiner.json");
     const backupDir = join(dir, "backups");
-    const server = createKarabinerStarterServer({ configPath, backupDir });
+    const server = createKarabinerPlusServer({ configPath, backupDir });
     const baseUrl = await listen(server);
 
     try {
@@ -120,7 +120,7 @@ test("POST /api/apply requires an existing Karabiner config", async () => {
 });
 
 test("GET /api/frontmost-app returns injected frontmost app metadata", async () => {
-  const server = createKarabinerStarterServer({
+  const server = createKarabinerPlusServer({
     frontmostAppProvider: async () => ({
       ok: true,
       name: "Slack",
@@ -148,7 +148,7 @@ test("GET /api/frontmost-app returns injected frontmost app metadata", async () 
 });
 
 test("POST /api/recommendations ranks packs for supplied usage", async () => {
-  const server = createKarabinerStarterServer();
+  const server = createKarabinerPlusServer();
   const baseUrl = await listen(server);
 
   try {
@@ -173,14 +173,14 @@ test("POST /api/recommendations ranks packs for supplied usage", async () => {
 });
 
 test("POST /api/apply-custom writes a custom shortcut with backup", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-custom-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-custom-"));
 
   try {
     const configPath = join(dir, "karabiner.json");
     const backupDir = join(dir, "backups");
     await writeFile(configPath, `${JSON.stringify(buildDefaultConfig(), null, 2)}\n`, "utf8");
 
-    const server = createKarabinerStarterServer({ configPath, backupDir });
+    const server = createKarabinerPlusServer({ configPath, backupDir });
     const baseUrl = await listen(server);
 
     try {
@@ -208,7 +208,7 @@ test("POST /api/apply-custom writes a custom shortcut with backup", async () => 
       const written = JSON.parse(await readFile(configPath, "utf8"));
       assert.equal(
         written.profiles[0].complex_modifications.rules.at(-1).description,
-        "[Karabiner Starter] Custom: Right Command H to Left Arrow"
+        "[Karabiner+] Custom: Right Command H to Left Arrow"
       );
     } finally {
       await close(server);
@@ -219,14 +219,14 @@ test("POST /api/apply-custom writes a custom shortcut with backup", async () => 
 });
 
 test("POST /api/apply-recommendations writes selected recommendation rules", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-recommendations-"));
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-recommendations-"));
 
   try {
     const configPath = join(dir, "karabiner.json");
     const backupDir = join(dir, "backups");
     await writeFile(configPath, `${JSON.stringify(buildDefaultConfig(), null, 2)}\n`, "utf8");
 
-    const server = createKarabinerStarterServer({ configPath, backupDir });
+    const server = createKarabinerPlusServer({ configPath, backupDir });
     const baseUrl = await listen(server);
 
     try {
@@ -245,7 +245,7 @@ test("POST /api/apply-recommendations writes selected recommendation rules", asy
       const written = JSON.parse(await readFile(configPath, "utf8"));
       assert.equal(
         written.profiles[0].complex_modifications.rules.at(-1).description,
-        "[Karabiner Starter] Recommended: Slack"
+        "[Karabiner+] Recommended: Slack"
       );
     } finally {
       await close(server);

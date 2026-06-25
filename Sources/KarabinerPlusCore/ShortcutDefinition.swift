@@ -1,6 +1,6 @@
 import Foundation
 
-private let keyTailorCustomPrefix = "[KeyTailor] Custom:"
+private let karabinerPlusCustomPrefix = "[Karabiner+] Custom:"
 private let riskyShortcutKeys: Set<String> = ["q", "w", "tab", "spacebar", "c", "v", "x", "z", "s"]
 private let commandModifiers: Set<String> = ["command", "left_command", "right_command"]
 
@@ -62,7 +62,7 @@ public struct ShortcutWarning: Equatable, Sendable {
 public enum ShortcutRuleBuilder {
     public static func buildCustomRule(_ definition: ShortcutDefinition) -> KarabinerRule {
         KarabinerRule(
-            description: "\(keyTailorCustomPrefix) \(definition.name)",
+            description: "\(karabinerPlusCustomPrefix) \(definition.name)",
             manipulators: [
                 KarabinerManipulator(
                     from: KarabinerFrom(
