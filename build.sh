@@ -10,6 +10,7 @@ contents_dir="${bundle_root}/Contents"
 macos_dir="${contents_dir}/MacOS"
 resources_dir="${contents_dir}/Resources"
 plist_source="${repo_root}/Sources/KarabinerPlusApp/Info.plist"
+icon_source="${repo_root}/Assets/KarabinerPlus.icns"
 release_binary=""
 
 cd "${repo_root}"
@@ -34,6 +35,7 @@ mkdir -p "${macos_dir}" "${resources_dir}"
 
 install -m 755 "${release_binary}" "${macos_dir}/${product_name}"
 cp "${plist_source}" "${contents_dir}/Info.plist"
+cp "${icon_source}" "${resources_dir}/KarabinerPlus.icns"
 
 chmod +x "${macos_dir}/${product_name}"
 

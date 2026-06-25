@@ -26,6 +26,23 @@ test("serves static HTML at the root route", async () => {
   }
 });
 
+test("serves favicon assets with image content types", async () => {
+  const server = createKarabinerPlusServer();
+  const baseUrl = await listen(server);
+
+  try {
+    const faviconResponse = await fetch(`${baseUrl}/favicon.svg`);
+    assert.equal(faviconResponse.status, 200);
+    assert.match(faviconResponse.headers.get("content-type") ?? "", /\bimage\/svg\+xml\b/i);
+
+    const touchIconResponse = await fetch(`${baseUrl}/apple-touch-icon.png`);
+    assert.equal(touchIconResponse.status, 200);
+    assert.match(touchIconResponse.headers.get("content-type") ?? "", /\bimage\/png\b/i);
+  } finally {
+    await close(server);
+  }
+});
+
 test("POST /api/apply returns conflicts without writing colliding presets", async () => {
   const dir = await mkdtemp(join(tmpdir(), "karabiner-plus-server-"));
 

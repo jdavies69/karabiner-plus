@@ -318,6 +318,14 @@ function contentTypeFor(path) {
       return "text/javascript; charset=utf-8";
     case ".html":
       return "text/html; charset=utf-8";
+    case ".ico":
+      return "image/x-icon";
+    case ".png":
+      return "image/png";
+    case ".svg":
+      return "image/svg+xml; charset=utf-8";
+    case ".webmanifest":
+      return "application/manifest+json; charset=utf-8";
     default:
       return "application/octet-stream";
   }
