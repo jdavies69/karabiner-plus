@@ -12,6 +12,10 @@ let package = Package(
             targets: ["KarabinerPlusCore"]
         ),
         .executable(
+            name: "KarabinerPlusApp",
+            targets: ["KarabinerPlusApp"]
+        ),
+        .executable(
             name: "KarabinerPlusCoreCheck",
             targets: ["KarabinerPlusCoreCheck"]
         ),
@@ -20,6 +24,11 @@ let package = Package(
         .target(
             name: "KarabinerPlusCore",
             path: "Sources/KarabinerPlusCore"
+        ),
+        .executableTarget(
+            name: "KarabinerPlusApp",
+            dependencies: ["KarabinerPlusCore"],
+            path: "Sources/KarabinerPlusApp"
         ),
         .executableTarget(
             name: "KarabinerPlusCoreCheck",
