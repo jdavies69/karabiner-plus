@@ -173,6 +173,55 @@ test("mergeStarterRules preserves unrelated rules and replaces starter rules", (
   assert.ok(!rules.some((rule) => rule.description.endsWith("Old rule")));
 });
 
+test("mergeStarterRules preserves starter custom and recommended rules", () => {
+  const config = buildDefaultConfig();
+  const selectedProfile = findSelectedProfile(config);
+
+  selectedProfile.complex_modifications.rules.push(
+    {
+      description: "[Karabiner Starter] Custom: Keep this rule",
+      manipulators: [
+        {
+          type: "basic",
+          from: { key_code: "f2" },
+          to: [{ key_code: "display_brightness_increment" }],
+        },
+      ],
+    },
+    {
+      description: "[Karabiner Starter] Recommended: Keep this rule",
+      manipulators: [
+        {
+          type: "basic",
+          from: { key_code: "f3" },
+          to: [{ key_code: "mission_control" }],
+        },
+      ],
+    },
+    {
+      description: `${STARTER_RULE_PREFIX} Old preset rule`,
+      manipulators: [
+        {
+          type: "basic",
+          from: { key_code: "x" },
+          to: [{ key_code: "y" }],
+        },
+      ],
+    }
+  );
+
+  const result = mergeStarterRules(config, rulesForPresetIds(["caps_escape_control"]));
+
+  const rules = result.config.profiles[0].complex_modifications.rules;
+  assert.equal(result.changed, true);
+  assert.equal(rules.length, 3);
+  assert.ok(rules.some((rule) => rule.description === "[Karabiner Starter] Custom: Keep this rule"));
+  assert.ok(
+    rules.some((rule) => rule.description === "[Karabiner Starter] Recommended: Keep this rule")
+  );
+  assert.ok(!rules.some((rule) => rule.description === `${STARTER_RULE_PREFIX} Old preset rule`));
+});
+
 test("collectExistingTriggers ignores starter-owned rules", () => {
   const config = buildDefaultConfig();
   const selectedProfile = findSelectedProfile(config);
@@ -212,6 +261,42 @@ test("collectExistingTriggers ignores starter-owned rules", () => {
       trigger: "key:h|mods:right_command",
     },
   ]);
+});
+
+test("collectExistingTriggers ignores starter custom and recommended rules", () => {
+  const config = buildDefaultConfig();
+  const selectedProfile = findSelectedProfile(config);
+
+  selectedProfile.complex_modifications.rules.push(
+    {
+      description: "[Karabiner Starter] Custom: Starter right command h",
+      manipulators: [
+        {
+          type: "basic",
+          from: {
+            key_code: "h",
+            modifiers: { mandatory: ["right_command"] },
+          },
+          to: [{ key_code: "home" }],
+        },
+      ],
+    },
+    {
+      description: "[Karabiner Starter] Recommended: Starter right command j",
+      manipulators: [
+        {
+          type: "basic",
+          from: {
+            key_code: "j",
+            modifiers: { mandatory: ["right_command"] },
+          },
+          to: [{ key_code: "down_arrow" }],
+        },
+      ],
+    }
+  );
+
+  assert.deepEqual(collectExistingTriggers(config), []);
 });
 
 test("collectExistingTriggers includes simple modifications", () => {

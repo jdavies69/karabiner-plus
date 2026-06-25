@@ -4,6 +4,9 @@ import { basename, dirname, join } from "node:path";
 import { triggersForRule } from "./conflicts.js";
 
 export const STARTER_RULE_PREFIX = "[Karabiner Starter]";
+export const STARTER_PRESET_PREFIX = STARTER_RULE_PREFIX;
+export const STARTER_CUSTOM_PREFIX = "[Karabiner Starter] Custom:";
+export const STARTER_RECOMMENDED_PREFIX = "[Karabiner Starter] Recommended:";
 
 export function buildDefaultConfig() {
   return {
@@ -72,19 +75,17 @@ export function findSelectedProfile(config) {
   return config.profiles.find((profile) => profile.selected) ?? config.profiles[0];
 }
 
-export function mergeStarterRules(config, starterRules) {
+export function mergeOwnedRules(config, newRules, ownedPrefix) {
   const nextConfig = structuredClone(config);
   const profile = findSelectedProfile(nextConfig);
   ensureComplexModifications(profile);
 
   const previousRules = profile.complex_modifications.rules;
-  const nonStarterRules = previousRules.filter(
-    (rule) => !String(rule.description ?? "").startsWith(STARTER_RULE_PREFIX)
-  );
+  const nonOwnedRules = previousRules.filter((rule) => !isOwnedRule(rule, ownedPrefix));
 
   profile.complex_modifications.rules = [
-    ...nonStarterRules,
-    ...starterRules.map((rule) => structuredClone(rule)),
+    ...nonOwnedRules,
+    ...newRules.map((rule) => structuredClone(rule)),
   ];
 
   return {
@@ -94,12 +95,16 @@ export function mergeStarterRules(config, starterRules) {
   };
 }
 
+export function mergeStarterRules(config, starterRules) {
+  return mergeOwnedRules(config, starterRules, STARTER_PRESET_PREFIX);
+}
+
 export function collectExistingTriggers(config) {
   const profile = findSelectedProfile(config);
   ensureComplexModifications(profile);
 
   const complexTriggers = profile.complex_modifications.rules
-    .filter((rule) => !String(rule.description ?? "").startsWith(STARTER_RULE_PREFIX))
+    .filter((rule) => !isStarterOwnedRule(rule))
     .flatMap((rule) => triggersForRule(rule));
 
   const simpleTriggers = (profile.simple_modifications ?? [])
@@ -186,4 +191,27 @@ function simpleModificationTrigger(simpleModification) {
     description: `Simple modification: ${key}`,
     trigger: `key:${key}|mods:`,
   };
+}
+
+function isStarterOwnedRule(rule) {
+  const description = String(rule.description ?? "");
+  return (
+    description.startsWith(STARTER_PRESET_PREFIX) ||
+    description.startsWith(STARTER_CUSTOM_PREFIX) ||
+    description.startsWith(STARTER_RECOMMENDED_PREFIX)
+  );
+}
+
+function isOwnedRule(rule, ownedPrefix) {
+  const description = String(rule.description ?? "");
+
+  if (ownedPrefix === STARTER_PRESET_PREFIX) {
+    return (
+      description.startsWith(STARTER_RULE_PREFIX) &&
+      !description.startsWith(STARTER_CUSTOM_PREFIX) &&
+      !description.startsWith(STARTER_RECOMMENDED_PREFIX)
+    );
+  }
+
+  return description.startsWith(ownedPrefix);
 }
