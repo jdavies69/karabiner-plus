@@ -11,16 +11,20 @@ let package = Package(
             name: "KeyTailorCore",
             targets: ["KeyTailorCore"]
         ),
+        .executable(
+            name: "KeyTailorCoreCheck",
+            targets: ["KeyTailorCoreCheck"]
+        ),
     ],
     targets: [
         .target(
             name: "KeyTailorCore",
             path: "Sources/KeyTailorCore"
         ),
-        .testTarget(
-            name: "KeyTailorCoreTests",
+        .executableTarget(
+            name: "KeyTailorCoreCheck",
             dependencies: ["KeyTailorCore"],
-            path: "Tests/KeyTailorCoreTests"
+            path: "Sources/KeyTailorCoreCheck"
         ),
     ]
 )
