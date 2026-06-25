@@ -6,15 +6,25 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { homedir } from "node:os";
 
-import { planPresetApplication } from "./core/apply.js";
+import { planCustomShortcutApplication, planPresetApplication } from "./core/apply.js";
 import {
   backupConfig,
+  collectExistingTriggers,
   listBackups,
+  mergeOwnedRules,
   readKarabinerConfig,
   restoreBackup,
+  STARTER_RECOMMENDED_PREFIX,
   writeKarabinerConfig,
 } from "./core/config.js";
+import { detectConflicts } from "./core/conflicts.js";
+import { getFrontmostApp } from "./core/frontmost-app.js";
 import { presetCatalog } from "./core/presets.js";
+import {
+  recommendationPacks,
+  recommendPacksForUsage,
+  rulesForRecommendationIds,
+} from "./core/recommendations.js";
 import {
   createSystemStatus,
   installKarabinerWithHomebrew,
@@ -33,6 +43,7 @@ export function createKarabinerStarterServer({
   statusProvider = createSystemStatus,
   installer = installKarabinerWithHomebrew,
   opener = openUrlOrApp,
+  frontmostAppProvider = getFrontmostApp,
 } = {}) {
   return createServer(async (request, response) => {
     try {
@@ -42,6 +53,21 @@ export function createKarabinerStarterServer({
 
       if (request.method === "GET" && request.url === "/api/presets") {
         return sendJson(response, 200, { presets: presetCatalog });
+      }
+
+      if (request.method === "GET" && request.url === "/api/frontmost-app") {
+        return sendJson(response, 200, await frontmostAppProvider());
+      }
+
+      if (request.method === "GET" && request.url === "/api/recommendations") {
+        return sendJson(response, 200, { packs: recommendationPacks });
+      }
+
+      if (request.method === "POST" && request.url === "/api/recommendations") {
+        const body = await readJsonBody(request);
+        return sendJson(response, 200, {
+          recommendations: recommendPacksForUsage(body.usage),
+        });
       }
 
       if (request.method === "POST" && request.url === "/api/install-karabiner") {
@@ -90,6 +116,14 @@ export function createKarabinerStarterServer({
         return await handleApply(request, response, { configPath, backupDir });
       }
 
+      if (request.method === "POST" && request.url === "/api/apply-custom") {
+        return await handleApplyCustom(request, response, { configPath, backupDir });
+      }
+
+      if (request.method === "POST" && request.url === "/api/apply-recommendations") {
+        return await handleApplyRecommendations(request, response, { configPath, backupDir });
+      }
+
       if (request.method === "GET") {
         return await serveStatic(request, response);
       }
@@ -101,6 +135,81 @@ export function createKarabinerStarterServer({
         error: error.message,
       });
     }
+  });
+}
+
+async function handleApplyCustom(request, response, { configPath, backupDir }) {
+  if (!existsSync(configPath)) {
+    return sendJson(response, 428, {
+      ok: false,
+      error: "Karabiner config was not found. Install and open Karabiner-Elements first, then apply custom shortcuts.",
+    });
+  }
+
+  const body = await readJsonBody(request);
+  const shortcuts = Array.isArray(body.shortcuts) ? body.shortcuts : [];
+  const config = await readKarabinerConfig(configPath);
+  const plan = planCustomShortcutApplication(config, shortcuts);
+
+  if (plan.validationErrors?.length > 0) {
+    return sendJson(response, 400, {
+      ok: false,
+      validationErrors: plan.validationErrors,
+      warnings: plan.warnings,
+    });
+  }
+
+  if (!plan.ok) {
+    return sendJson(response, 409, {
+      ok: false,
+      conflicts: plan.conflicts,
+      warnings: plan.warnings,
+    });
+  }
+
+  const backupPath = await backupConfig({ sourcePath: configPath, backupDir });
+  await writeKarabinerConfig(configPath, plan.config);
+
+  return sendJson(response, 200, {
+    ok: true,
+    changed: plan.changed,
+    warnings: plan.warnings,
+    backupPath,
+  });
+}
+
+async function handleApplyRecommendations(request, response, { configPath, backupDir }) {
+  if (!existsSync(configPath)) {
+    return sendJson(response, 428, {
+      ok: false,
+      error: "Karabiner config was not found. Install and open Karabiner-Elements first, then apply recommendations.",
+    });
+  }
+
+  const body = await readJsonBody(request);
+  const recommendationIds = Array.isArray(body.recommendationIds) ? body.recommendationIds : [];
+  const selectedRules = rulesForRecommendationIds(recommendationIds);
+  const config = await readKarabinerConfig(configPath);
+  const conflicts = detectConflicts({
+    selectedRules,
+    existingTriggers: collectExistingTriggers(config),
+  });
+
+  if (conflicts.length > 0) {
+    return sendJson(response, 409, {
+      ok: false,
+      conflicts,
+    });
+  }
+
+  const mergeResult = mergeOwnedRules(config, selectedRules, STARTER_RECOMMENDED_PREFIX);
+  const backupPath = await backupConfig({ sourcePath: configPath, backupDir });
+  await writeKarabinerConfig(configPath, mergeResult.config);
+
+  return sendJson(response, 200, {
+    ok: true,
+    changed: mergeResult.changed,
+    backupPath,
   });
 }
 

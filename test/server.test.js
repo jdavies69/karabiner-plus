@@ -119,6 +119,142 @@ test("POST /api/apply requires an existing Karabiner config", async () => {
   }
 });
 
+test("GET /api/frontmost-app returns injected frontmost app metadata", async () => {
+  const server = createKarabinerStarterServer({
+    frontmostAppProvider: async () => ({
+      ok: true,
+      name: "Slack",
+      bundleIdentifier: "com.tinyspeck.slackmacgap",
+      sampledAt: "2026-06-25T12:00:00.000Z",
+      source: "test",
+    }),
+  });
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/api/frontmost-app`);
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      name: "Slack",
+      bundleIdentifier: "com.tinyspeck.slackmacgap",
+      sampledAt: "2026-06-25T12:00:00.000Z",
+      source: "test",
+    });
+  } finally {
+    await close(server);
+  }
+});
+
+test("POST /api/recommendations ranks packs for supplied usage", async () => {
+  const server = createKarabinerStarterServer();
+  const baseUrl = await listen(server);
+
+  try {
+    const response = await fetch(`${baseUrl}/api/recommendations`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        usage: [
+          { appName: "Safari", bundleIdentifier: "com.apple.Safari", seconds: 100 },
+          { appName: "Slack", bundleIdentifier: "com.tinyspeck.slackmacgap", seconds: 200 },
+        ],
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.recommendations[0].id, "slack");
+    assert.equal(payload.recommendations[1].id, "browser");
+  } finally {
+    await close(server);
+  }
+});
+
+test("POST /api/apply-custom writes a custom shortcut with backup", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-custom-"));
+
+  try {
+    const configPath = join(dir, "karabiner.json");
+    const backupDir = join(dir, "backups");
+    await writeFile(configPath, `${JSON.stringify(buildDefaultConfig(), null, 2)}\n`, "utf8");
+
+    const server = createKarabinerStarterServer({ configPath, backupDir });
+    const baseUrl = await listen(server);
+
+    try {
+      const response = await fetch(`${baseUrl}/api/apply-custom`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          shortcuts: [
+            {
+              name: "Right Command H to Left Arrow",
+              sourceKey: "h",
+              sourceModifiers: ["right_command"],
+              outputKey: "left_arrow",
+              outputModifiers: [],
+            },
+          ],
+        }),
+      });
+
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.ok, true);
+      assert.match(payload.backupPath, /karabiner-/);
+
+      const written = JSON.parse(await readFile(configPath, "utf8"));
+      assert.equal(
+        written.profiles[0].complex_modifications.rules.at(-1).description,
+        "[Karabiner Starter] Custom: Right Command H to Left Arrow"
+      );
+    } finally {
+      await close(server);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/apply-recommendations writes selected recommendation rules", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "karabiner-starter-recommendations-"));
+
+  try {
+    const configPath = join(dir, "karabiner.json");
+    const backupDir = join(dir, "backups");
+    await writeFile(configPath, `${JSON.stringify(buildDefaultConfig(), null, 2)}\n`, "utf8");
+
+    const server = createKarabinerStarterServer({ configPath, backupDir });
+    const baseUrl = await listen(server);
+
+    try {
+      const response = await fetch(`${baseUrl}/api/apply-recommendations`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          recommendationIds: ["slack"],
+        }),
+      });
+
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.ok, true);
+
+      const written = JSON.parse(await readFile(configPath, "utf8"));
+      assert.equal(
+        written.profiles[0].complex_modifications.rules.at(-1).description,
+        "[Karabiner Starter] Recommended: Slack"
+      );
+    } finally {
+      await close(server);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 function listen(server) {
   return new Promise((resolve, reject) => {
     const onError = (error) => reject(error);
