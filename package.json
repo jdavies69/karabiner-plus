@@ -9,6 +9,8 @@
   "scripts": {
     "start": "node ./src/cli.js start",
     "doctor": "node ./src/cli.js doctor",
+    "swift:check": "swift run KarabinerPlusCoreCheck",
+    "swift:build": "swift build",
     "test": "node --test",
     "lint": "node --check ./src/cli.js && node --check ./src/server.js && node --check ./src/core/apply.js && node --check ./src/core/config.js && node --check ./src/core/conflicts.js && node --check ./src/core/presets.js && node --check ./src/core/system.js && node --check ./public/app.js"
   },

@@ -28,7 +28,8 @@ let package = Package(
         .executableTarget(
             name: "KarabinerPlusApp",
             dependencies: ["KarabinerPlusCore"],
-            path: "Sources/KarabinerPlusApp"
+            path: "Sources/KarabinerPlusApp",
+            exclude: ["Info.plist"]
         ),
         .executableTarget(
             name: "KarabinerPlusCoreCheck",

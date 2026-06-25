@@ -1,65 +1,58 @@
 # Karabiner+
 
-Karabiner+ is a small macOS setup helper for friends who want a few safe keyboard tweaks without learning Karabiner-Elements first.
+Karabiner+ is a native macOS helper for setting up official [Karabiner-Elements](https://karabiner-elements.pqrs.org/), creating safe shortcuts, and getting local shortcut recommendations from the apps you actually use.
 
-It does not bundle, fork, or replace Karabiner. It installs and configures the official [Karabiner-Elements](https://karabiner-elements.pqrs.org/) app, then writes starter rules to your local Karabiner config.
+It does not bundle, fork, or replace Karabiner-Elements. Karabiner-Elements still handles the keyboard driver and remapping engine; Karabiner+ owns the friendlier setup, backups, shortcut creation, and recommendations.
 
 ## What You Get
 
-- Caps Lock: tap for Escape, hold for Control.
-- Right Command + H/J/K/L: arrow navigation.
-- Right Command + Delete: forward delete.
-- A backup before every config change.
-- Basic conflict checks before presets are applied.
+- A native windowed macOS app, not a menu bar item.
+- Setup checks for Karabiner config, Homebrew, and active profile.
+- Backup before every config write.
+- Shortcut Coach: opt-in local active-app usage tracking while the app is open.
+- Shortcut Studio: create global custom shortcuts without editing Karabiner JSON.
+- App-aware recommendation packs for Slack, browsers, Messages, media apps, and Preview.
+- Conservative conflict checks before writes.
 
-## Prerequisites
+## Privacy
 
-- macOS.
-- Node.js 20 or newer.
-- Git, or GitHub Desktop.
-- Homebrew is optional. If present, the app can install official Karabiner-Elements with `brew install --cask karabiner-elements`.
-- macOS admin access is usually needed for Karabiner-Elements permissions.
+Shortcut Coach is off until you start it. While tracking is on, Karabiner+ stores only:
 
-## Start
+- active app name
+- bundle identifier when available
+- active time estimate
+- last seen time
+
+It does not collect keystrokes, window titles, document contents, or cloud data. Usage history stays local on your Mac and can be deleted from the app.
+
+## Build And Run
 
 ```bash
 git clone https://github.com/jdavies69/karabiner-plus.git
 cd karabiner-plus
+./build.sh
+open "build/Karabiner+.app"
+```
+
+The repo currently builds from source with Swift command-line tools. A signed/notarized release is not part of this first version.
+
+## Legacy Prototype
+
+The earlier browser prototype is still available:
+
+```bash
 npm start
 ```
 
-`npm start` launches a local setup page. Open the shown local URL if your browser does not open automatically, then work through the buttons:
+Use it only as a fallback while the native app matures.
 
-- Check status: confirms whether official Karabiner-Elements and Homebrew are installed.
-- Install Karabiner: installs official Karabiner-Elements through Homebrew when available.
-- Open download page: use this if Homebrew is not installed.
-- Open Karabiner Settings: finish required macOS permissions for keyboard monitoring and virtual keyboard access.
-- Back up config: saves the current `~/.config/karabiner/karabiner.json`.
-- Apply presets: writes the selected starter rules after checking for obvious conflicts.
-- Restore backup: restores a previous backup and creates a pre-restore backup first.
+## Verification
 
-More detail: [docs/usage.md](docs/usage.md).
-
-## Backup And Rollback
-
-Before changing your Karabiner config, Karabiner+ creates a timestamped backup in:
-
-```text
-~/.config/karabiner/backups/
+```bash
+swift run KarabinerPlusCoreCheck
+swift build
+npm test
+npm run lint
 ```
 
-Use the Restore backup panel in the setup page, or copy the backup you want over:
-
-```text
-~/.config/karabiner/karabiner.json
-```
-
-Karabiner-Elements usually reloads that file automatically. If it does not, open Karabiner Settings or restart Karabiner-Elements.
-
-## Known Limitations
-
-- macOS only.
-- This is a local helper, not a packaged Mac app.
-- Conflict checks are conservative and only cover obvious duplicate Karabiner triggers in the selected profile.
-- It does not discover every app-specific shortcut on your Mac.
-- It does not uninstall Karabiner-Elements.
+`swift test` is not used in this repo right now because the current local Command Line Tools install cannot import XCTest. `KarabinerPlusCoreCheck` is the Swift verification runner.

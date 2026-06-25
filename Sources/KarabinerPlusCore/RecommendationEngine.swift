@@ -46,6 +46,24 @@ public struct RecommendationEngine: Sendable {
             bundleIdentifiers: ["com.spotify.client", "com.apple.music"],
             appNames: ["spotify", "music", "youtube"]
         ),
+        RecommendationPack(
+            recommendation: Recommendation(
+                id: "messages",
+                title: "Messages",
+                summary: "Conversation navigation helpers for Messages."
+            ),
+            bundleIdentifiers: ["com.apple.mobilesms"],
+            appNames: ["messages"]
+        ),
+        RecommendationPack(
+            recommendation: Recommendation(
+                id: "preview",
+                title: "Preview",
+                summary: "Document navigation helpers for Preview."
+            ),
+            bundleIdentifiers: ["com.apple.preview"],
+            appNames: ["preview"]
+        ),
     ]
 
     public init() {}

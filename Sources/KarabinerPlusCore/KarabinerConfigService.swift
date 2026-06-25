@@ -357,6 +357,39 @@ public struct KarabinerConfigService: Sendable {
                     ],
                 ],
             ]
+        case "messages":
+            return makeRecommendedRule(
+                title: "Messages",
+                bundleIdentifiers: ["com.apple.MobileSMS"],
+                triggerKey: "f"
+            )
+        case "preview":
+            return [
+                "description": "[Karabiner+] Recommended: Preview",
+                "conditions": [
+                    [
+                        "type": "frontmost_application_if",
+                        "bundle_identifiers": ["com.apple.Preview"],
+                    ],
+                ],
+                "manipulators": [
+                    [
+                        "type": "basic",
+                        "from": [
+                            "key_code": "down_arrow",
+                            "modifiers": [
+                                "mandatory": ["right_command"],
+                                "optional": ["any"],
+                            ],
+                        ],
+                        "to": [
+                            [
+                                "key_code": "page_down",
+                            ],
+                        ],
+                    ],
+                ],
+            ]
         default:
             return nil
         }

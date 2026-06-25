@@ -8,17 +8,18 @@ Karabiner+ is a small personal onboarding app for macOS that helps a user instal
 
 The app is a standalone companion, not a Karabiner fork. It uses official Karabiner-Elements for the driver, background services, EventViewer, and settings window. Karabiner+ owns only onboarding, local checks, backups, preset generation, and configuration writes.
 
-The first version ships as a GitHub repo with one entry point:
+The native version ships as a GitHub repo with one primary build path:
 
 ```bash
-npm start
+./build.sh
+open "build/Karabiner+.app"
 ```
 
-That opens a local browser UI. The UI can install Karabiner via Homebrew when Homebrew is available, open the official download page otherwise, open Karabiner Settings, create backups, and apply selected presets.
+The older local browser UI remains available with `npm start` as a fallback. The native app can install Karabiner via Homebrew when Homebrew is available, open the official download page otherwise, open Karabiner, create backups, track usage with consent, recommend packs, and apply custom shortcuts.
 
 ## Architecture
 
-The app has three layers:
+The legacy browser prototype has three layers:
 
 - `src/core`: pure Karabiner preset, conflict, and config merge logic.
 - `src/server.js`: local HTTP API and static UI host.
@@ -52,4 +53,4 @@ The app also labels its chosen presets as low-risk because they avoid common glo
 
 ## Later
 
-Once the workflow is proven, a Tauri or SwiftUI wrapper can replace the browser-hosted UI while keeping the same `src/core` logic.
+The current product direction is the native Swift app in `Sources/KarabinerPlusApp`, with the browser-hosted UI kept as a fallback.

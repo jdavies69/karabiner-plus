@@ -8,6 +8,7 @@ struct KarabinerPlusCoreCheck {
         try checkCommandQWarning()
         try checkUsageAccumulator()
         try checkRecommendations()
+        try checkMessagesAndPreviewRecommendations()
         try checkConfigServiceCustomMergeAndBackup()
         try checkConfigServiceRecommendedMergeAndConflictDetection()
         print("KarabinerPlusCoreCheck passed")
@@ -118,6 +119,19 @@ struct KarabinerPlusCoreCheck {
         try expect(
             engine.recommendations(for: entries).map(\.id) == ["slack", "browser", "media"],
             "recommendations should rank Slack ahead of browser and media usage"
+        )
+    }
+
+    private static func checkMessagesAndPreviewRecommendations() throws {
+        let engine = RecommendationEngine()
+        let entries = [
+            UsageEntry(app: TrackedApp(name: "Preview", bundleIdentifier: "com.apple.Preview"), seconds: 120),
+            UsageEntry(app: TrackedApp(name: "Messages", bundleIdentifier: "com.apple.MobileSMS"), seconds: 90),
+        ]
+
+        try expect(
+            engine.recommendations(for: entries).map(\.id) == ["preview", "messages"],
+            "recommendations should include Preview and Messages packs"
         )
     }
 

@@ -16,7 +16,7 @@ Use a Swift-first structure:
 
 - `Sources/KarabinerPlusCore`: testable Swift models and services for Karabiner config, shortcuts, recommendations, usage, and system status.
 - `Sources/KarabinerPlusApp`: SwiftUI/AppKit windowed macOS application.
-- `Tests/KarabinerPlusCoreTests`: XCTest coverage for config merging, shortcut generation, recommendations, and usage accumulation.
+- `Sources/KarabinerPlusCoreCheck`: plain Swift verification runner for config merging, shortcut generation, recommendations, and usage accumulation.
 - `build.sh`: compiles `build/Karabiner+.app` using local Swift command-line tools.
 
 Keep the current Node/browser prototype in the repo as a reference and fallback, but the primary documented path becomes native Karabiner+.
