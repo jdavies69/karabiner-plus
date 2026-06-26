@@ -7,6 +7,8 @@ export const STARTER_RULE_PREFIX = "[Karabiner+]";
 export const STARTER_PRESET_PREFIX = STARTER_RULE_PREFIX;
 export const STARTER_CUSTOM_PREFIX = "[Karabiner+] Custom:";
 export const STARTER_RECOMMENDED_PREFIX = "[Karabiner+] Recommended:";
+export const STARTER_LAUNCHER_DESCRIPTION = "[Karabiner+] Launcher Sequences";
+const STARTER_LAUNCHER_PREFIX = "[Karabiner+] Launcher";
 const LEGACY_RULE_PREFIX = "[Karabiner Starter]";
 const LEGACY_CUSTOM_PREFIX = "[Karabiner Starter] Custom:";
 const LEGACY_RECOMMENDED_PREFIX = "[Karabiner Starter] Recommended:";
@@ -199,9 +201,10 @@ function simpleModificationTrigger(simpleModification) {
 function isStarterOwnedRule(rule) {
   const description = String(rule.description ?? "");
   return (
-    description.startsWith(STARTER_PRESET_PREFIX) ||
+    isOwnedRule(rule, STARTER_PRESET_PREFIX) ||
     description.startsWith(STARTER_CUSTOM_PREFIX) ||
     description.startsWith(STARTER_RECOMMENDED_PREFIX) ||
+    description === STARTER_LAUNCHER_DESCRIPTION ||
     description.startsWith(LEGACY_RULE_PREFIX) ||
     description.startsWith(LEGACY_CUSTOM_PREFIX) ||
     description.startsWith(LEGACY_RECOMMENDED_PREFIX)
@@ -216,6 +219,8 @@ function isOwnedRule(rule, ownedPrefix) {
       (description.startsWith(STARTER_RULE_PREFIX) || description.startsWith(LEGACY_RULE_PREFIX)) &&
       !description.startsWith(STARTER_CUSTOM_PREFIX) &&
       !description.startsWith(STARTER_RECOMMENDED_PREFIX) &&
+      !description.startsWith(STARTER_LAUNCHER_PREFIX) &&
+      description !== STARTER_LAUNCHER_DESCRIPTION &&
       !description.startsWith(LEGACY_CUSTOM_PREFIX) &&
       !description.startsWith(LEGACY_RECOMMENDED_PREFIX)
     );

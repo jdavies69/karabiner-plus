@@ -12,6 +12,7 @@ It does not bundle, fork, or replace Karabiner-Elements. Karabiner-Elements stil
 - Backup before every config write.
 - Safety recovery center for backup history, restore, and undoing the latest Karabiner+ change.
 - Shortcut Coach: opt-in local active-app usage tracking while the app is open.
+- Launcher Sequences: turn local app history into editable Right Command app launchers like `Right Command` + `S U`.
 - Create: build global or app-specific remaps from safe templates, manual pickers, or in-app shortcut capture without editing Karabiner JSON.
 - Visual apply summaries show what will be written, replaced, preserved, or blocked before custom shortcut writes.
 - Saved Studio shortcuts are preserved as a list instead of being overwritten one at a time.

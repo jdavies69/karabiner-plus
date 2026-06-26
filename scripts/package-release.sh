@@ -32,6 +32,7 @@ Karabiner+ is an unofficial companion app for the official Karabiner-Elements ap
 What's included:
 - first-shortcut wizard
 - global and app-specific custom shortcuts
+- Right Command launcher sequences from local app history
 - visual apply summaries before custom shortcut writes
 - local backup restore and undo
 

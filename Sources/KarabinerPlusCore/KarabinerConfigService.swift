@@ -84,6 +84,7 @@ public enum KarabinerConfigServiceError: Error, Equatable, Sendable {
     case configNotFound
     case invalidConfig
     case conflicts([KarabinerRuleConflict])
+    case invalidLauncherSequences([LauncherSequenceValidationIssue])
 }
 
 public struct KarabinerConfigService: Sendable {
@@ -200,6 +201,29 @@ public struct KarabinerConfigService: Sendable {
     public func applyRecommendedPacks(_ ids: [String]) throws -> KarabinerApplyResult {
         let rules = recommendedRuleDictionaries(for: ids)
         return try applyPlan(planRules(rules, replacing: .karabinerPlusRecommended))
+    }
+
+    public func applyLauncherSequences(_ definitions: [LauncherSequenceDefinition]) throws -> KarabinerApplyResult {
+        let rules = try launcherRules(for: definitions)
+        return try applyPlan(planRules(rules, replacing: .karabinerPlusLaunchers))
+    }
+
+    public func previewLauncherSequenceApply(_ definitions: [LauncherSequenceDefinition]) throws -> KarabinerApplySummary {
+        let rules = try launcherRules(for: definitions)
+        return try planRules(rules, replacing: .karabinerPlusLaunchers).summary
+    }
+
+    private func launcherRules(for definitions: [LauncherSequenceDefinition]) throws -> [[String: Any]] {
+        guard !definitions.isEmpty, definitions.allSatisfy(\.isValid) else {
+            throw KarabinerConfigServiceError.invalidLauncherSequences([])
+        }
+
+        let validationIssues = LauncherSequenceRuleBuilder.validationIssues(for: definitions)
+        guard validationIssues.isEmpty else {
+            throw KarabinerConfigServiceError.invalidLauncherSequences(validationIssues)
+        }
+
+        return LauncherSequenceRuleBuilder.buildRules(definitions)
     }
 
     private func planRules(
@@ -739,6 +763,7 @@ private struct TriggerDetails {
 private enum OwnedRuleCategory {
     case karabinerPlusCustom
     case karabinerPlusRecommended
+    case karabinerPlusLaunchers
 
     func owns(rule: [String: Any]) -> Bool {
         let description = String(describing: rule["description"] ?? "")
@@ -749,6 +774,8 @@ private enum OwnedRuleCategory {
         case .karabinerPlusRecommended:
             return description.hasPrefix("[Karabiner+] Recommended:") ||
                 description.hasPrefix("[Karabiner Starter] Recommended:")
+        case .karabinerPlusLaunchers:
+            return description == LauncherSequenceRuleBuilder.ruleDescription
         }
     }
 }

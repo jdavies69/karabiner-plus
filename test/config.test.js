@@ -199,6 +199,16 @@ test("mergeStarterRules preserves starter custom and recommended rules", () => {
       ],
     },
     {
+      description: "[Karabiner+] Launcher Sequences",
+      manipulators: [
+        {
+          type: "basic",
+          from: { key_code: "right_command" },
+          to: [{ set_variable: { name: "karabiner_plus_launcher_active", value: 1 } }],
+        },
+      ],
+    },
+    {
       description: `${STARTER_RULE_PREFIX} Old preset rule`,
       manipulators: [
         {
@@ -214,11 +224,12 @@ test("mergeStarterRules preserves starter custom and recommended rules", () => {
 
   const rules = result.config.profiles[0].complex_modifications.rules;
   assert.equal(result.changed, true);
-  assert.equal(rules.length, 3);
+  assert.equal(rules.length, 4);
   assert.ok(rules.some((rule) => rule.description === "[Karabiner+] Custom: Keep this rule"));
   assert.ok(
     rules.some((rule) => rule.description === "[Karabiner+] Recommended: Keep this rule")
   );
+  assert.ok(rules.some((rule) => rule.description === "[Karabiner+] Launcher Sequences"));
   assert.ok(!rules.some((rule) => rule.description === `${STARTER_RULE_PREFIX} Old preset rule`));
 });
 
@@ -263,7 +274,7 @@ test("collectExistingTriggers ignores starter-owned rules", () => {
   ]);
 });
 
-test("collectExistingTriggers ignores starter custom and recommended rules", () => {
+test("collectExistingTriggers ignores starter custom, recommended, and generated launcher rules", () => {
   const config = buildDefaultConfig();
   const selectedProfile = findSelectedProfile(config);
 
@@ -293,10 +304,50 @@ test("collectExistingTriggers ignores starter custom and recommended rules", () 
           to: [{ key_code: "down_arrow" }],
         },
       ],
+    },
+    {
+      description: "[Karabiner+] Launcher Sequences",
+      manipulators: [
+        {
+          type: "basic",
+          from: {
+            key_code: "right_command",
+          },
+          to: [{ set_variable: { name: "karabiner_plus_launcher_active", value: 1 } }],
+        },
+        {
+          type: "basic",
+          from: {
+            key_code: "s",
+          },
+          conditions: [
+            { type: "variable_if", name: "karabiner_plus_launcher_active", value: 1 },
+          ],
+          to: [{ shell_command: "/usr/bin/open -b 'com.superhuman.Superhuman'" }],
+        },
+      ],
+    },
+    {
+      description: "[Karabiner+] Launcher Manual Rule",
+      manipulators: [
+        {
+          type: "basic",
+          from: {
+            key_code: "i",
+            modifiers: { mandatory: ["control"] },
+          },
+          to: [{ key_code: "page_down" }],
+        },
+      ],
     }
   );
 
-  assert.deepEqual(collectExistingTriggers(config), []);
+  assert.deepEqual(collectExistingTriggers(config), [
+    {
+      description: "[Karabiner+] Launcher Manual Rule",
+      trigger: "key:i|mods:control",
+    },
+  ]);
 });
 
 test("collectExistingTriggers includes simple modifications", () => {

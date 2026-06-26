@@ -93,6 +93,7 @@ final class AppModel: ObservableObject {
     @Published var setupMessage = ""
     @Published var coachMessage = ""
     @Published var studioMessage = ""
+    @Published var launcherMessage = ""
     @Published var isBusy = false
     @Published var isTracking = false
     @Published var trackingError = ""
@@ -101,6 +102,8 @@ final class AppModel: ObservableObject {
     @Published var isFirstShortcutWizardActive = false
     @Published var pendingShortcutSummary: KarabinerApplySummary?
     @Published var pendingShortcutDefinition: ShortcutDefinition?
+    @Published var launcherDrafts: [LauncherSequenceDefinition] = []
+    @Published var launcherApplySummary: KarabinerApplySummary?
     @Published var savedShortcuts: [ShortcutDefinition] = []
     @Published var backupHistory: [KarabinerBackup] = []
     @Published var selectedBackupID = ""
@@ -113,7 +116,9 @@ final class AppModel: ObservableObject {
 
     let service: KarabinerConfigService
     let recommendationEngine = RecommendationEngine()
+    let launcherSequenceEngine = LauncherSequenceEngine()
     let projectURL = URL(string: "https://github.com/jdavies69/karabiner-plus")!
+    private var pendingLauncherDefinitions: [LauncherSequenceDefinition] = []
     let modifierOptions = ["command", "control", "option", "shift", "fn", "right_command"]
     let keyOptions = [
         "caps_lock",
@@ -237,6 +242,18 @@ final class AppModel: ObservableObject {
 
     var recommendedPacks: [Recommendation] {
         recommendationEngine.recommendations(for: usageEntries)
+    }
+
+    var launcherSuggestions: [LauncherSequenceSuggestion] {
+        launcherSequenceEngine.suggestions(for: usageEntries)
+    }
+
+    var launcherDraftsOrSuggestions: [LauncherSequenceDefinition] {
+        if !launcherDrafts.isEmpty {
+            return launcherDrafts
+        }
+
+        return launcherSuggestions.map(\.definition)
     }
 
     var onboardingSteps: [OnboardingStep] {
@@ -490,6 +507,9 @@ final class AppModel: ObservableObject {
         sessionLastSeen = [:]
         sessionMetadata = [:]
         persistedUsage = []
+        launcherDrafts = []
+        launcherApplySummary = nil
+        pendingLauncherDefinitions = []
         saveUsageRecords()
         coachMessage = "Usage history deleted from local storage."
     }
@@ -503,6 +523,101 @@ final class AppModel: ObservableObject {
         } catch {
             coachMessage = "Could not apply \(recommendation.title): \(friendlyMessage(for: error))"
         }
+    }
+
+    func refreshLauncherDraftsFromSuggestions() {
+        launcherDrafts = launcherSuggestions.map(\.definition)
+        launcherApplySummary = nil
+        pendingLauncherDefinitions = []
+        launcherMessage = launcherDrafts.isEmpty
+            ? "No launcher suggestions yet. Track apps with bundle identifiers first."
+            : "Launcher suggestions refreshed from local app history."
+    }
+
+    func updateLauncherSequence(for definition: LauncherSequenceDefinition, text: String) {
+        if launcherDrafts.isEmpty {
+            launcherDrafts = launcherSuggestions.map(\.definition)
+        }
+
+        let sequence = text
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+            .prefix(2)
+            .map(String.init)
+
+        launcherDrafts = launcherDrafts.map { existing in
+            guard existing.id == definition.id else {
+                return existing
+            }
+
+            return LauncherSequenceDefinition(
+                appName: existing.appName,
+                bundleIdentifier: existing.bundleIdentifier,
+                sequence: sequence
+            )
+        }
+        launcherApplySummary = nil
+        pendingLauncherDefinitions = []
+    }
+
+    func prepareLauncherSequenceApply() {
+        let definitions = launcherDraftsOrSuggestions
+        guard !definitions.isEmpty else {
+            launcherMessage = "No valid launcher sequences to apply yet."
+            return
+        }
+
+        guard definitions.allSatisfy(\.isValid) else {
+            launcherApplySummary = nil
+            pendingLauncherDefinitions = []
+            launcherMessage = "Keep each launcher to one or two letters or numbers, and only use apps with bundle identifiers."
+            return
+        }
+
+        let validationIssues = LauncherSequenceRuleBuilder.validationIssues(for: definitions)
+        guard validationIssues.isEmpty else {
+            launcherApplySummary = nil
+            pendingLauncherDefinitions = []
+            launcherMessage = validationIssues.map(\.message).joined(separator: " ")
+            return
+        }
+
+        do {
+            launcherApplySummary = try service.previewLauncherSequenceApply(definitions)
+            launcherDrafts = definitions
+            pendingLauncherDefinitions = definitions
+            launcherMessage = "Review the launcher summary, then apply when ready."
+        } catch {
+            launcherApplySummary = nil
+            pendingLauncherDefinitions = []
+            launcherMessage = "Could not preview launcher sequences: \(friendlyMessage(for: error))"
+        }
+    }
+
+    func confirmLauncherSequenceApply() {
+        let definitions = pendingLauncherDefinitions
+        guard !definitions.isEmpty else {
+            launcherMessage = "Review the launcher summary before applying."
+            return
+        }
+
+        do {
+            let result = try service.applyLauncherSequences(definitions)
+            lastUndoBackup = KarabinerBackup(url: result.backupURL, modifiedAt: Date())
+            launcherApplySummary = nil
+            pendingLauncherDefinitions = []
+            launcherDrafts = definitions
+            launcherMessage = "Applied \(definitions.count) launcher sequence\(definitions.count == 1 ? "" : "s"). Backup: \(result.backupURL.lastPathComponent)"
+            refreshStatus()
+        } catch {
+            launcherMessage = "Could not apply launcher sequences: \(friendlyMessage(for: error))"
+        }
+    }
+
+    func cancelLauncherSequenceApply() {
+        launcherApplySummary = nil
+        pendingLauncherDefinitions = []
+        launcherMessage = "Launcher apply cancelled. No Karabiner config changes were made."
     }
 
     func applyShortcutDraft() {
@@ -763,6 +878,14 @@ final class AppModel: ObservableObject {
         date.formatted(date: .abbreviated, time: .shortened)
     }
 
+    func formatLauncherReason(for definition: LauncherSequenceDefinition) -> String {
+        guard let record = usageRecords.first(where: { $0.bundleIdentifier.caseInsensitiveCompare(definition.bundleIdentifier) == .orderedSame }) else {
+            return definition.bundleIdentifier
+        }
+
+        return "\(formatDuration(record.seconds)) tracked · \(definition.bundleIdentifier)"
+    }
+
     func formatBackup(_ backup: KarabinerBackup) -> String {
         if let modifiedAt = backup.modifiedAt {
             return "\(backup.name) · \(modifiedAt.formatted(date: .abbreviated, time: .shortened))"
@@ -882,6 +1005,8 @@ final class AppModel: ObservableObject {
                 return details.isEmpty
                     ? "A shortcut conflict was found."
                     : "A shortcut conflict was found with \(details)."
+            case let .invalidLauncherSequences(issues):
+                return issues.first?.message ?? "Launcher sequences must be unique and use one or two letters or numbers."
             }
         }
 

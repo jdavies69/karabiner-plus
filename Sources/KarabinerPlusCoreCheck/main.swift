@@ -6,12 +6,15 @@ struct KarabinerPlusCoreCheck {
     static func main() throws {
         try checkCustomRuleJSON()
         try checkAppSpecificCustomRuleJSON()
+        try checkLauncherSequenceRuleJSON()
         try checkCommandQWarning()
         try checkOutputCommandWarning()
         try checkPlainLetterWarning()
         try checkUsageAccumulator()
         try checkRecommendations()
         try checkMessagesAndPreviewRecommendations()
+        try checkLauncherSequenceSuggestions()
+        try checkLauncherSequenceValidation()
         try checkConfigServiceReadsCustomShortcuts()
         try checkConfigServiceReadsAppSpecificCustomShortcuts()
         try checkConfigServiceCustomMergeAndBackup()
@@ -19,6 +22,8 @@ struct KarabinerPlusCoreCheck {
         try checkConfigServiceListsAndRestoresBackups()
         try checkConfigServiceModifierOverlapConflicts()
         try checkConfigServiceRecommendedMergeAndConflictDetection()
+        try checkConfigServiceLauncherSequenceSummary()
+        try checkConfigServiceRejectsAmbiguousLauncherSequences()
         print("KarabinerPlusCoreCheck passed")
     }
 
@@ -94,6 +99,70 @@ struct KarabinerPlusCoreCheck {
         try expect(
             conditions[0]["bundle_identifiers"] as? [String] == ["^com\\.tinyspeck\\.slackmacgap$"],
             "app-specific custom rule should use an exact bundle identifier condition"
+        )
+    }
+
+    private static func checkLauncherSequenceRuleJSON() throws {
+        let rules = LauncherSequenceRuleBuilder.buildRules(
+            [
+                LauncherSequenceDefinition(
+                    appName: "Codex",
+                    bundleIdentifier: "com.openai.codex",
+                    sequence: ["c", "o"]
+                ),
+                LauncherSequenceDefinition(
+                    appName: "ChatGPT",
+                    bundleIdentifier: "com.openai.chat",
+                    sequence: ["c", "h"]
+                ),
+                LauncherSequenceDefinition(
+                    appName: "Superhuman",
+                    bundleIdentifier: "com.superhuman.Superhuman",
+                    sequence: ["s", "u"]
+                ),
+            ]
+        )
+
+        try expect(rules.count == 1, "launcher sequences should build one owned rule")
+        let rule = rules[0]
+        try expect(
+            rule["description"] as? String == "[Karabiner+] Launcher Sequences",
+            "launcher rule should use the Karabiner+ launcher description"
+        )
+
+        let manipulators = try expectValue(
+            rule["manipulators"] as? [[String: Any]],
+            "launcher rule should include manipulators"
+        )
+        try expect(
+            manipulators.count == 6,
+            "three launcher definitions with two shared prefixes should produce leader, two prefix, and three launch manipulators"
+        )
+
+        let leaderFrom = try expectDictionary(
+            manipulators[0]["from"] as? [String: Any],
+            "leader manipulator should include a from object"
+        )
+        try expect(leaderFrom["key_code"] as? String == "right_command", "launcher leader should use right_command")
+
+        let codexLaunch = try expectValue(
+            manipulators.first { manipulator in
+                guard let to = manipulator["to"] as? [[String: Any]] else { return false }
+                return to.contains { ($0["shell_command"] as? String)?.contains("com.openai.codex") == true }
+            },
+            "launcher rule should include a Codex shell command"
+        )
+        let conditions = try expectValue(
+            codexLaunch["conditions"] as? [[String: Any]],
+            "Codex launcher should include sequence conditions"
+        )
+        try expect(
+            conditions.contains { $0["name"] as? String == "karabiner_plus_launcher_active" && $0["value"] as? Int == 1 },
+            "Codex launcher should require the right-command launcher to be active"
+        )
+        try expect(
+            conditions.contains { $0["name"] as? String == "karabiner_plus_launcher_prefix" && $0["value"] as? String == "c" },
+            "Codex launcher should require the C prefix before O"
         )
     }
 
@@ -299,6 +368,83 @@ struct KarabinerPlusCoreCheck {
         try expect(
             engine.recommendations(for: entries).map(\.id) == ["preview", "messages"],
             "recommendations should include Preview and Messages packs"
+        )
+    }
+
+    private static func checkLauncherSequenceSuggestions() throws {
+        let engine = LauncherSequenceEngine()
+        let suggestions = engine.suggestions(
+            for: [
+                UsageEntry(app: TrackedApp(name: "Codex", bundleIdentifier: "com.openai.codex"), seconds: 240),
+                UsageEntry(app: TrackedApp(name: "ChatGPT", bundleIdentifier: "com.openai.chat"), seconds: 220),
+                UsageEntry(app: TrackedApp(name: "Superhuman", bundleIdentifier: "com.superhuman.Superhuman"), seconds: 200),
+                UsageEntry(app: TrackedApp(name: "loginwindow", bundleIdentifier: ""), seconds: 180),
+            ]
+        )
+
+        try expect(
+            suggestions.map { $0.definition.appName } == ["Codex", "ChatGPT", "Superhuman"],
+            "launcher suggestions should skip apps without bundle identifiers"
+        )
+        try expect(
+            suggestions.map { $0.definition.sequenceLabel } == ["C O", "C H", "S U"],
+            "launcher suggestions should choose distinct mnemonic sequences from app names"
+        )
+
+        let prefixSensitiveSuggestions = engine.suggestions(
+            for: [
+                UsageEntry(app: TrackedApp(name: "A", bundleIdentifier: "com.example.a"), seconds: 300),
+                UsageEntry(app: TrackedApp(name: "Arc", bundleIdentifier: "company.thebrowser.Browser"), seconds: 200),
+            ]
+        )
+        try expect(
+            LauncherSequenceRuleBuilder.validationIssues(for: prefixSensitiveSuggestions.map(\.definition)).isEmpty,
+            "launcher suggestions should avoid prefix-overlapping defaults"
+        )
+    }
+
+    private static func checkLauncherSequenceValidation() throws {
+        let issues = LauncherSequenceRuleBuilder.validationIssues(
+            for: [
+                LauncherSequenceDefinition(
+                    appName: "Codex",
+                    bundleIdentifier: "com.openai.codex",
+                    sequence: ["c"]
+                ),
+                LauncherSequenceDefinition(
+                    appName: "ChatGPT",
+                    bundleIdentifier: "com.openai.chat",
+                    sequence: ["c", "h"]
+                ),
+                LauncherSequenceDefinition(
+                    appName: "Superhuman",
+                    bundleIdentifier: "com.superhuman.Superhuman",
+                    sequence: ["s", "u"]
+                ),
+                LauncherSequenceDefinition(
+                    appName: "Slack",
+                    bundleIdentifier: "com.tinyspeck.slackmacgap",
+                    sequence: ["s", "u"]
+                ),
+            ]
+        )
+
+        try expect(issues.count == 2, "launcher validation should find duplicate and prefix conflicts")
+        try expect(
+            issues.contains {
+                $0.kind == .prefixOverlap &&
+                    $0.sequenceLabel == "C" &&
+                    $0.appNames == ["ChatGPT", "Codex"]
+            },
+            "launcher validation should flag one-key launchers that shadow two-key launchers"
+        )
+        try expect(
+            issues.contains {
+                $0.kind == .duplicate &&
+                    $0.sequenceLabel == "S U" &&
+                    $0.appNames == ["Slack", "Superhuman"]
+            },
+            "launcher validation should flag duplicate edited sequences"
         )
     }
 
@@ -722,6 +868,136 @@ struct KarabinerPlusCoreCheck {
             descriptions.contains("[Karabiner+] Custom: Existing native custom"),
             "recommended apply should preserve Karabiner+ custom rules"
         )
+    }
+
+    private static func checkConfigServiceLauncherSequenceSummary() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": "Daily",
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [
+                                [
+                                    "description": "[Karabiner+] Launcher Sequences",
+                                    "manipulators": [
+                                        basicManipulator(key: "m", mandatory: ["right_command"], toKey: "m"),
+                                    ],
+                                ],
+                                [
+                                    "description": "Imported rule",
+                                    "manipulators": [
+                                        basicManipulator(key: "u", mandatory: ["control"], toKey: "page_up"),
+                                    ],
+                                ],
+                                [
+                                    "description": "[Karabiner+] Launcher Manual Rule",
+                                    "manipulators": [
+                                        basicManipulator(key: "i", mandatory: ["control"], toKey: "page_down"),
+                                    ],
+                                ],
+                            ],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL
+        )
+        let definitions = [
+            LauncherSequenceDefinition(
+                appName: "Superhuman",
+                bundleIdentifier: "com.superhuman.Superhuman",
+                sequence: ["m"]
+            ),
+        ]
+
+        let summary = try service.previewLauncherSequenceApply(definitions)
+        try expect(summary.activeProfileName == "Daily", "launcher preview active profile should be Daily")
+        try expect(summary.addedRuleCount == 1, "launcher preview should write one rule")
+        try expect(
+            summary.replacedOwnedRuleCount == 1,
+            "launcher preview should replace one generated launcher rule, got \(summary.replacedOwnedRuleCount)"
+        )
+        try expect(
+            summary.preservedRuleCount == 2,
+            "launcher preview should preserve two unrelated rules, got \(summary.preservedRuleCount)"
+        )
+        try expect(summary.conflictCount == 0, "launcher preview should not report conflicts")
+
+        let result = try service.applyLauncherSequences(definitions)
+        try expect(FileManager.default.fileExists(atPath: result.backupURL.path), "launcher apply should create a backup")
+
+        let config = try fixture.readConfig()
+        let profile = try selectedProfile(from: config)
+        let complex = try expectDictionary(
+            profile["complex_modifications"] as? [String: Any],
+            "selected profile should have complex modifications"
+        )
+        let rules = try expectArray(complex["rules"] as? [[String: Any]], "selected profile should have complex rules")
+        let descriptions = rules.compactMap { $0["description"] as? String }
+        try expect(
+            descriptions.contains("[Karabiner+] Launcher Manual Rule"),
+            "launcher apply should preserve launcher-like rules that Karabiner+ did not generate"
+        )
+    }
+
+    private static func checkConfigServiceRejectsAmbiguousLauncherSequences() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": "Daily",
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL
+        )
+
+        do {
+            _ = try service.previewLauncherSequenceApply(
+                [
+                    LauncherSequenceDefinition(
+                        appName: "Codex",
+                        bundleIdentifier: "com.openai.codex",
+                        sequence: ["c"]
+                    ),
+                    LauncherSequenceDefinition(
+                        appName: "ChatGPT",
+                        bundleIdentifier: "com.openai.chat",
+                        sequence: ["c", "h"]
+                    ),
+                ]
+            )
+            throw CheckFailure("launcher preview should reject prefix-overlapping sequences")
+        } catch let KarabinerConfigServiceError.invalidLauncherSequences(issues) {
+            try expect(
+                issues.map(\.kind) == [.prefixOverlap],
+                "launcher preview should report the sequence conflict"
+            )
+        }
     }
 
     private static func jsonDictionary<T: Encodable>(_ value: T) throws -> [String: Any] {

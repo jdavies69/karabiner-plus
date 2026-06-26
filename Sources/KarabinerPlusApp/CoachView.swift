@@ -1,3 +1,4 @@
+import KarabinerPlusCore
 import SwiftUI
 
 struct CoachView: View {
@@ -8,10 +9,14 @@ struct CoachView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 trackingCard
+                launcherSequencesCard
                 recommendationsCard
                 historyCard
                 if !model.coachMessage.isEmpty {
                     infoCard(title: "Latest update", message: model.coachMessage)
+                }
+                if !model.launcherMessage.isEmpty {
+                    infoCard(title: "Launcher update", message: model.launcherMessage)
                 }
                 if !model.trackingError.isEmpty {
                     infoCard(title: "Tracking issue", message: model.trackingError)
@@ -135,6 +140,60 @@ struct CoachView: View {
         }
     }
 
+    private var launcherSequencesCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "command.square")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Launcher sequences")
+                            .font(.title3.weight(.semibold))
+                        Text("Use Right Command as a launcher key, then type one or two letters to open apps from your local history.")
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                let definitions = model.launcherDraftsOrSuggestions
+                if definitions.isEmpty {
+                    Text("No launcher suggestions yet. Track app usage for a few minutes, then refresh suggestions.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(definitions) { definition in
+                        launcherRow(definition)
+                    }
+
+                    if let summary = model.launcherApplySummary {
+                        launcherSummary(summary)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    Button("Refresh Suggestions") {
+                        model.refreshLauncherDraftsFromSuggestions()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Review Apply Summary") {
+                        model.prepareLauncherSequenceApply()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(definitions.isEmpty || !model.hasKarabinerConfig)
+
+                    if !model.hasKarabinerConfig {
+                        Button("Go to Connect") {
+                            model.navigate(to: .setup)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+        }
+    }
+
     private var historyCard: some View {
         card {
             VStack(alignment: .leading, spacing: 14) {
@@ -164,6 +223,62 @@ struct CoachView: View {
                 }
             }
         }
+    }
+
+    private func launcherRow(_ definition: LauncherSequenceDefinition) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(definition.appName)
+                    .font(.headline)
+                Text(model.formatLauncherReason(for: definition))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            HStack(spacing: 6) {
+                Text("Right Command")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                TextField(
+                    "SU",
+                    text: Binding(
+                        get: { definition.sequence.joined().uppercased() },
+                        set: { model.updateLauncherSequence(for: definition, text: $0) }
+                    )
+                )
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 62)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func launcherSummary(_ summary: KarabinerApplySummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+            Text("Apply summary")
+                .font(.headline)
+            Text("Writes \(summary.addedRuleCount) launcher rule, replaces \(summary.replacedOwnedRuleCount) existing Karabiner+ launcher rule, and preserves \(summary.preservedRuleCount) unrelated rules.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 12) {
+                Button("Apply Launchers") {
+                    model.confirmLauncherSequenceApply()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Cancel") {
+                    model.cancelLauncherSequenceApply()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {

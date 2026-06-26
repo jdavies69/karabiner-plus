@@ -27,7 +27,7 @@ open "build/Karabiner+.app"
 
 - Start: see setup progress, the next best action, and launch the first-shortcut wizard.
 - Connect: open official Karabiner-Elements, check config readiness, open permission screens, and create backups.
-- Coach: start or pause local usage tracking, delete usage history, view top apps, and apply recommended shortcut packs.
+- Coach: start or pause local usage tracking, delete usage history, view top apps, create launcher sequences, and apply recommended shortcut packs.
 - Create: create global or app-specific custom remaps from safe templates, manual pickers, or shortcut capture, then review an apply summary before saving with backup.
 - Safety: review local privacy, config-write behavior, restore backups, undo the latest change, inspect paths, and check GitHub updates.
 
@@ -50,6 +50,19 @@ Karabiner+ does not track:
 - cloud data
 
 Usage history is stored locally in UserDefaults and can be deleted from the Coach screen.
+
+## Launcher Sequences
+
+Coach can turn local app history into editable Right Command launcher sequences. Karabiner+ suggests one- or two-letter codes from app names, skips apps without bundle identifiers, and lets you edit the code before applying.
+
+Examples:
+
+- `Right Command` then `S U` opens Superhuman.
+- `Right Command` then `C O` opens Codex.
+- `Right Command` then `C H` opens ChatGPT.
+- `Right Command` then `M` can open Superhuman if you prefer Mail-style muscle memory.
+
+Launcher sequences are written as one Karabiner+ owned rule. Applying them creates a backup first and preserves unrelated Karabiner rules.
 
 ## Create Shortcuts
 
