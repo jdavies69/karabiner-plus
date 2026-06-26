@@ -52,63 +52,45 @@ func drawIcon(pixelSize: Int) throws -> Data {
     NSRect(x: 0, y: 0, width: size, height: size).fill()
 
     let graphite = NSColor(calibratedRed: 0.12, green: 0.14, blue: 0.17, alpha: 1.0)
-    let graphiteLine = NSColor(calibratedRed: 0.12, green: 0.14, blue: 0.17, alpha: 0.18)
+    let graphiteLine = NSColor(calibratedRed: 0.12, green: 0.14, blue: 0.17, alpha: 0.12)
     let accent = NSColor(calibratedRed: 0.93, green: 0.28, blue: 0.10, alpha: 1.0)
     func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
         NSPoint(x: scale(x), y: scale(y))
     }
 
-    let tileRect = rect(70, 70, 884, 884)
-    let tilePath = NSBezierPath(roundedRect: tileRect, xRadius: scale(210), yRadius: scale(210))
-
-    let tileShadow = NSShadow()
-    tileShadow.shadowOffset = NSSize(width: 0, height: scale(-22))
-    tileShadow.shadowBlurRadius = scale(58)
-    tileShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.20)
-    tileShadow.set()
-
-    NSGradient(colors: [
-        NSColor(calibratedRed: 0.99, green: 0.995, blue: 1.00, alpha: 0.98),
-        NSColor(calibratedRed: 0.91, green: 0.94, blue: 0.96, alpha: 0.94),
-        NSColor(calibratedRed: 0.78, green: 0.82, blue: 0.86, alpha: 0.92)
-    ])?.draw(in: tilePath, angle: -38)
-
-    NSGraphicsContext.restoreGraphicsState()
-    NSGraphicsContext.saveGraphicsState()
-    NSGraphicsContext.current = context
-
-    NSColor(calibratedWhite: 1.0, alpha: 0.74).setStroke()
-    tilePath.lineWidth = scale(10)
-    tilePath.stroke()
-
     let keyboardShadow = NSShadow()
-    keyboardShadow.shadowOffset = NSSize(width: 0, height: scale(-12))
-    keyboardShadow.shadowBlurRadius = scale(34)
-    keyboardShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.16)
+    keyboardShadow.shadowOffset = NSSize(width: 0, height: scale(-24))
+    keyboardShadow.shadowBlurRadius = scale(58)
+    keyboardShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.18)
     keyboardShadow.set()
 
-    let keyboardPath = NSBezierPath(roundedRect: rect(126, 216, 772, 590), xRadius: scale(118), yRadius: scale(118))
+    let keyboardPath = NSBezierPath(roundedRect: rect(100, 176, 824, 666), xRadius: scale(160), yRadius: scale(160))
     NSGradient(colors: [
-        NSColor(calibratedRed: 0.96, green: 0.975, blue: 0.99, alpha: 0.66),
-        NSColor(calibratedRed: 0.74, green: 0.79, blue: 0.84, alpha: 0.44)
+        NSColor(calibratedRed: 1.00, green: 1.00, blue: 1.00, alpha: 0.82),
+        NSColor(calibratedRed: 0.90, green: 0.95, blue: 0.98, alpha: 0.62),
+        NSColor(calibratedRed: 0.72, green: 0.79, blue: 0.85, alpha: 0.48)
     ])?.draw(in: keyboardPath, angle: -34)
 
     keyboardShadow.shadowColor = .clear
     keyboardShadow.set()
-    graphiteLine.setStroke()
-    keyboardPath.lineWidth = scale(7)
+    NSColor(calibratedWhite: 1.0, alpha: 0.62).setStroke()
+    keyboardPath.lineWidth = scale(5)
     keyboardPath.stroke()
 
-    NSColor(calibratedWhite: 1.0, alpha: 0.58).setStroke()
+    graphiteLine.setStroke()
+    keyboardPath.lineWidth = scale(4)
+    keyboardPath.stroke()
+
+    NSColor(calibratedWhite: 1.0, alpha: 0.72).setStroke()
     let keyboardHighlight = NSBezierPath()
-    keyboardHighlight.move(to: point(202, 748))
-    keyboardHighlight.line(to: point(806, 748))
-    keyboardHighlight.lineWidth = scale(8)
+    keyboardHighlight.move(to: point(196, 760))
+    keyboardHighlight.line(to: point(810, 760))
+    keyboardHighlight.lineWidth = scale(9)
     keyboardHighlight.lineCapStyle = .round
     keyboardHighlight.stroke()
 
-    let keyFill = NSColor(calibratedRed: 0.97, green: 0.98, blue: 1.0, alpha: 0.50)
-    let keyStroke = NSColor(calibratedRed: 0.11, green: 0.13, blue: 0.16, alpha: 0.14)
+    let keyFill = NSColor(calibratedRed: 0.98, green: 0.99, blue: 1.0, alpha: 0.56)
+    let keyStroke = NSColor(calibratedRed: 0.11, green: 0.13, blue: 0.16, alpha: 0.10)
     let keys: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
         (188, 612, 132, 78), (350, 612, 110, 78), (490, 612, 110, 78), (630, 612, 110, 78), (770, 612, 78, 78),
         (188, 486, 104, 82), (322, 486, 122, 82), (474, 486, 122, 82), (626, 486, 122, 82), (778, 486, 82, 82),

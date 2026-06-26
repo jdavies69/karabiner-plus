@@ -1,20 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Karabiner+">
   <defs>
-    <linearGradient id="tile" x1="43" y1="28" x2="215" y2="232" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FCFEFF"/>
-      <stop offset="0.55" stop-color="#EBF0F4"/>
-      <stop offset="1" stop-color="#C8D0D6"/>
-    </linearGradient>
-    <linearGradient id="keyboard" x1="52" y1="58" x2="210" y2="201" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F8FBFD" stop-opacity="0.72"/>
-      <stop offset="1" stop-color="#BFC8D0" stop-opacity="0.46"/>
+    <linearGradient id="keyboard" x1="37" y1="44" x2="224" y2="212" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.84"/>
+      <stop offset="0.55" stop-color="#E9F1F6" stop-opacity="0.64"/>
+      <stop offset="1" stop-color="#B8C9D6" stop-opacity="0.50"/>
     </linearGradient>
     <linearGradient id="plate" x1="154" y1="88" x2="215" y2="158" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF" stop-opacity="0.82"/>
       <stop offset="1" stop-color="#DDE5EB" stop-opacity="0.68"/>
     </linearGradient>
     <filter id="soft-shadow" x="-24%" y="-24%" width="148%" height="156%">
-      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#1F252B" flood-opacity="0.2"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1F252B" flood-opacity="0.18"/>
     </filter>
     <filter id="side-shadow" x="-28%" y="-24%" width="156%" height="160%">
       <feDropShadow dx="5" dy="8" stdDeviation="6" flood-color="#1F252B" flood-opacity="0.24"/>
@@ -22,9 +18,9 @@
   </defs>
 
   <rect width="256" height="256" fill="none"/>
-  <rect x="18" y="18" width="220" height="220" rx="52" fill="url(#tile)" stroke="#FFFFFF" stroke-opacity="0.74" stroke-width="3"/>
-  <rect x="31" y="54" width="194" height="148" rx="30" fill="url(#keyboard)" stroke="#1F252B" stroke-opacity="0.18" stroke-width="2" filter="url(#soft-shadow)"/>
-  <path d="M51 69h151" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.58"/>
+  <rect x="25" y="44" width="206" height="166" rx="40" fill="url(#keyboard)" stroke="#FFFFFF" stroke-opacity="0.62" stroke-width="1.4" filter="url(#soft-shadow)"/>
+  <rect x="25" y="44" width="206" height="166" rx="40" fill="none" stroke="#1F252B" stroke-opacity="0.12" stroke-width="1"/>
+  <path d="M49 73h153" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.72"/>
 
   <g fill="#FBFDFF" fill-opacity="0.52" stroke="#1F252B" stroke-opacity="0.14" stroke-width="1.4">
     <rect x="48" y="74" width="32" height="20" rx="5"/>
@@ -57,7 +53,7 @@
     <circle cx="96.5" cy="192" r="1.5" fill="#FFFFFF"/>
   </g>
 
-  <rect x="153" y="89" width="68" height="68" rx="19" fill="url(#plate)" stroke="#1F252B" stroke-opacity="0.18" stroke-width="1.7" filter="url(#soft-shadow)"/>
+  <rect x="153" y="89" width="68" height="68" rx="19" fill="url(#plate)" stroke="#1F252B" stroke-opacity="0.14" stroke-width="1.5" filter="url(#soft-shadow)"/>
   <rect x="166" y="117" width="44" height="14" rx="7" fill="#20252B"/>
   <rect x="181" y="102" width="14" height="44" rx="7" fill="#20252B"/>
   <circle cx="188" cy="124" r="7" fill="#EC4719"/>
