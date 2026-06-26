@@ -30,6 +30,20 @@ final class AppModel: ObservableObject {
         }
     }
 
+    enum CaptureTarget: Equatable {
+        case source
+        case output
+
+        var label: String {
+            switch self {
+            case .source:
+                return "input"
+            case .output:
+                return "output"
+            }
+        }
+    }
+
     struct ShortcutDraft {
         var name = "Caps Lock to Escape"
         var sourceKey = "caps_lock"
@@ -61,6 +75,15 @@ final class AppModel: ObservableObject {
         let draft: ShortcutDraft
     }
 
+    struct OnboardingStep: Identifiable {
+        let id: String
+        let title: String
+        let detail: String
+        let isComplete: Bool
+        let buttonTitle: String
+        let section: Section
+    }
+
     @Published var selectedSection: Section? = .start
     @Published var setupStatus: KarabinerConfigStatus?
     @Published var setupMessage = ""
@@ -70,7 +93,11 @@ final class AppModel: ObservableObject {
     @Published var isTracking = false
     @Published var trackingError = ""
     @Published var draft = ShortcutDraft()
+    @Published var captureTarget: CaptureTarget?
     @Published var savedShortcuts: [ShortcutDefinition] = []
+    @Published var backupHistory: [KarabinerBackup] = []
+    @Published var selectedBackupID = ""
+    @Published var lastUndoBackup: KarabinerBackup?
     @Published var isCheckingForUpdates = false
     @Published var updateStatusTitle = "Not checked yet"
     @Published var updateStatusDetail = "Check GitHub to see whether a newer Karabiner+ build is available."
@@ -151,6 +178,7 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     private var activationObserver: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
+    private var shortcutCaptureMonitor: Any?
 
     init(
         service: KarabinerConfigService = KarabinerConfigService(),
@@ -196,6 +224,51 @@ final class AppModel: ObservableObject {
         recommendationEngine.recommendations(for: usageEntries)
     }
 
+    var onboardingSteps: [OnboardingStep] {
+        [
+            OnboardingStep(
+                id: "karabiner-installed",
+                title: "Install official Karabiner-Elements",
+                detail: karabinerAppInstalled ? "Found on this Mac." : "Karabiner+ needs the official app for the keyboard engine.",
+                isComplete: karabinerAppInstalled,
+                buttonTitle: karabinerAppInstalled ? "Review" : "Connect",
+                section: .setup
+            ),
+            OnboardingStep(
+                id: "config-ready",
+                title: "Create the Karabiner config",
+                detail: hasKarabinerConfig ? "Ready to write safely." : "Open Karabiner-Elements once, then refresh.",
+                isComplete: hasKarabinerConfig,
+                buttonTitle: "Open Connect",
+                section: .setup
+            ),
+            OnboardingStep(
+                id: "backup-ready",
+                title: "Create a recovery point",
+                detail: backupHistory.isEmpty ? "Make one backup before experimenting." : "\(backupHistory.count) backup\(backupHistory.count == 1 ? "" : "s") available.",
+                isComplete: !backupHistory.isEmpty,
+                buttonTitle: "Open Safety",
+                section: .safety
+            ),
+            OnboardingStep(
+                id: "first-shortcut",
+                title: "Save your first shortcut",
+                detail: savedShortcuts.isEmpty ? "Try a safe template or capture a shortcut in Create." : "\(savedShortcuts.count) Studio shortcut\(savedShortcuts.count == 1 ? "" : "s") saved.",
+                isComplete: !savedShortcuts.isEmpty,
+                buttonTitle: "Open Create",
+                section: .studio
+            ),
+        ]
+    }
+
+    var completedOnboardingCount: Int {
+        onboardingSteps.filter(\.isComplete).count
+    }
+
+    var primaryOnboardingStep: OnboardingStep {
+        onboardingSteps.first { !$0.isComplete } ?? onboardingSteps.last!
+    }
+
     var trackingDisclosure: String {
         "Karabiner+ tracks active app name, bundle identifier when available, active time estimate, and last seen time. It does not track keystrokes, window titles, document contents, or cloud data."
     }
@@ -206,6 +279,18 @@ final class AppModel: ObservableObject {
 
     var draftCanApply: Bool {
         hasKarabinerConfig && !draft.definition.name.isEmpty && !draft.definition.isNoOp
+    }
+
+    var selectedBackup: KarabinerBackup? {
+        backupHistory.first { $0.id == selectedBackupID }
+    }
+
+    var canRestoreSelectedBackup: Bool {
+        hasKarabinerConfig && selectedBackup != nil
+    }
+
+    var canUndoLastChange: Bool {
+        hasKarabinerConfig && lastUndoBackup != nil
     }
 
     var appVersion: String {
@@ -237,7 +322,7 @@ final class AppModel: ObservableObject {
         return #"cd "\#(path)" && git pull --ff-only && ./build.sh && open "build/Karabiner+.app""#
     }
 
-    func refreshStatus() {
+    func refreshStatus(clearSetupMessage: Bool = true) {
         do {
             setupStatus = try service.readStatus()
             if setupStatus?.configExists == true {
@@ -245,7 +330,10 @@ final class AppModel: ObservableObject {
             } else {
                 savedShortcuts = []
             }
-            setupMessage = ""
+            refreshBackups()
+            if clearSetupMessage {
+                setupMessage = ""
+            }
         } catch {
             setupMessage = "Could not read Karabiner status: \(friendlyMessage(for: error))"
         }
@@ -324,8 +412,8 @@ final class AppModel: ObservableObject {
     func backupConfig() {
         do {
             let backupURL = try service.backupConfig()
+            refreshStatus(clearSetupMessage: false)
             setupMessage = "Backup created: \(backupURL.lastPathComponent)"
-            refreshStatus()
         } catch {
             setupMessage = "Backup failed: \(friendlyMessage(for: error))"
         }
@@ -345,8 +433,8 @@ final class AppModel: ObservableObject {
                 executable: "/usr/bin/env",
                 arguments: ["brew", "install", "--cask", "karabiner-elements"]
             )
+            refreshStatus(clearSetupMessage: false)
             setupMessage = result.isEmpty ? "Homebrew install finished." : result
-            refreshStatus()
         } catch {
             setupMessage = "Homebrew install failed: \(friendlyMessage(for: error))"
         }
@@ -390,6 +478,7 @@ final class AppModel: ObservableObject {
     func applyRecommendation(_ recommendation: Recommendation) {
         do {
             let result = try service.applyRecommendedPacks([recommendation.id])
+            lastUndoBackup = KarabinerBackup(url: result.backupURL, modifiedAt: Date())
             coachMessage = "Applied \(recommendation.title) to \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
             refreshStatus()
         } catch {
@@ -413,6 +502,7 @@ final class AppModel: ObservableObject {
         do {
             let shortcuts = replacingShortcut(definition, in: savedShortcuts)
             let result = try service.applyCustomShortcuts(shortcuts)
+            lastUndoBackup = KarabinerBackup(url: result.backupURL, modifiedAt: Date())
             savedShortcuts = shortcuts
             studioMessage = "Saved \(definition.name) to \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
             refreshStatus()
@@ -428,6 +518,7 @@ final class AppModel: ObservableObject {
 
         do {
             let result = try service.applyCustomShortcuts(shortcuts)
+            lastUndoBackup = KarabinerBackup(url: result.backupURL, modifiedAt: Date())
             savedShortcuts = shortcuts
             studioMessage = "Removed \(definition.name) from \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
             refreshStatus()
@@ -446,8 +537,54 @@ final class AppModel: ObservableObject {
         studioMessage = "Started a fresh shortcut."
     }
 
+    func beginShortcutCapture(_ target: CaptureTarget) {
+        stopShortcutCapture()
+        captureTarget = target
+        studioMessage = "Listening for \(target.label) shortcut. Press the key combination inside Karabiner+."
+
+        shortcutCaptureMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let captured = ShortcutCapture.parse(event: event) else {
+                NSSound.beep()
+                return nil
+            }
+
+            Task { @MainActor in
+                self?.finishShortcutCapture(captured)
+            }
+
+            return nil
+        }
+    }
+
+    func cancelShortcutCapture() {
+        stopShortcutCapture()
+        studioMessage = "Shortcut capture cancelled."
+    }
+
     func navigate(to section: Section) {
         selectedSection = section
+    }
+
+    func restoreSelectedBackup() {
+        guard let backup = selectedBackup else {
+            setupMessage = "Choose a backup before restoring."
+            return
+        }
+
+        restoreBackup(backup)
+    }
+
+    func undoLastConfigWrite() {
+        guard let backup = lastUndoBackup else {
+            setupMessage = "There is no recent Karabiner+ change to undo in this session."
+            return
+        }
+
+        restoreBackup(backup)
+    }
+
+    func openBackupDirectory() {
+        NSWorkspace.shared.open(service.backupDirectoryURL)
     }
 
     func label(forKey key: String) -> String {
@@ -515,6 +652,14 @@ final class AppModel: ObservableObject {
         date.formatted(date: .abbreviated, time: .shortened)
     }
 
+    func formatBackup(_ backup: KarabinerBackup) -> String {
+        if let modifiedAt = backup.modifiedAt {
+            return "\(backup.name) · \(modifiedAt.formatted(date: .abbreviated, time: .shortened))"
+        }
+
+        return backup.name
+    }
+
     private var usageEntries: [UsageEntry] {
         usageRecords.map {
             UsageEntry(
@@ -522,6 +667,31 @@ final class AppModel: ObservableObject {
                 seconds: $0.seconds
             )
         }
+    }
+
+    private func finishShortcutCapture(_ captured: CapturedShortcut) {
+        guard let captureTarget else { return }
+
+        switch captureTarget {
+        case .source:
+            draft.sourceKey = captured.key
+            draft.sourceModifiers = Set(captured.modifiers)
+        case .output:
+            draft.outputKey = captured.key
+            draft.outputModifiers = Set(captured.modifiers)
+        }
+
+        studioMessage = "Captured \(captureTarget.label): \(shortcutLabel(modifiers: captured.modifiers, key: captured.key))."
+        stopShortcutCapture()
+    }
+
+    private func stopShortcutCapture() {
+        if let shortcutCaptureMonitor {
+            NSEvent.removeMonitor(shortcutCaptureMonitor)
+            self.shortcutCaptureMonitor = nil
+        }
+
+        captureTarget = nil
     }
 
     private func fetchLatestGitHubCommit() async throws -> GitHubCommit {
@@ -552,6 +722,36 @@ final class AppModel: ObservableObject {
         }
 
         return filtered + [definition]
+    }
+
+    private func refreshBackups() {
+        do {
+            backupHistory = try service.listBackups()
+            let ids = Set(backupHistory.map(\.id))
+
+            if selectedBackupID.isEmpty || !ids.contains(selectedBackupID) {
+                selectedBackupID = backupHistory.first?.id ?? ""
+            }
+
+            if let lastUndoBackup, !ids.contains(lastUndoBackup.id) {
+                self.lastUndoBackup = nil
+            }
+        } catch {
+            backupHistory = []
+            selectedBackupID = ""
+            lastUndoBackup = nil
+        }
+    }
+
+    private func restoreBackup(_ backup: KarabinerBackup) {
+        do {
+            let result = try service.restoreBackup(backup)
+            lastUndoBackup = KarabinerBackup(url: result.preRestoreBackupURL, modifiedAt: Date())
+            refreshStatus(clearSetupMessage: false)
+            setupMessage = "Restored \(backup.name). Pre-restore backup: \(result.preRestoreBackupURL.lastPathComponent)"
+        } catch {
+            setupMessage = "Restore failed: \(friendlyMessage(for: error))"
+        }
     }
 
     private func friendlyMessage(for error: Error) -> String {
@@ -826,6 +1026,7 @@ final class AppModel: ObservableObject {
             return key.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
+
 }
 
 struct UsageRecord: Codable, Identifiable {

@@ -20,6 +20,34 @@ public struct KarabinerApplyResult: Equatable, Sendable {
     }
 }
 
+public struct KarabinerRestoreResult: Equatable, Sendable {
+    public let restoredURL: URL
+    public let preRestoreBackupURL: URL
+
+    public init(restoredURL: URL, preRestoreBackupURL: URL) {
+        self.restoredURL = restoredURL
+        self.preRestoreBackupURL = preRestoreBackupURL
+    }
+}
+
+public struct KarabinerBackup: Equatable, Identifiable, Sendable {
+    public let url: URL
+    public let modifiedAt: Date?
+
+    public var id: String {
+        url.path
+    }
+
+    public var name: String {
+        url.lastPathComponent
+    }
+
+    public init(url: URL, modifiedAt: Date?) {
+        self.url = url
+        self.modifiedAt = modifiedAt
+    }
+}
+
 public struct KarabinerRuleConflict: Equatable, Sendable {
     public let trigger: String
     public let ruleDescriptions: [String]
@@ -75,6 +103,53 @@ public struct KarabinerConfigService: Sendable {
         let backupURL = backupDirectoryURL.appendingPathComponent("karabiner-\(backupTimestamp()).json")
         try FileManager.default.copyItem(at: configURL, to: backupURL)
         return backupURL
+    }
+
+    public func listBackups() throws -> [KarabinerBackup] {
+        guard FileManager.default.fileExists(atPath: backupDirectoryURL.path) else {
+            return []
+        }
+
+        let urls = try FileManager.default.contentsOfDirectory(
+            at: backupDirectoryURL,
+            includingPropertiesForKeys: [.contentModificationDateKey, .creationDateKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        return try urls
+            .filter { url in
+                url.pathExtension == "json" && url.lastPathComponent.hasPrefix("karabiner-")
+            }
+            .map { url in
+                let values = try url.resourceValues(forKeys: [.contentModificationDateKey, .creationDateKey])
+                return KarabinerBackup(
+                    url: url,
+                    modifiedAt: values.contentModificationDate ?? values.creationDate
+                )
+            }
+            .sorted { left, right in
+                left.name > right.name
+            }
+    }
+
+    public func restoreBackup(_ backup: KarabinerBackup) throws -> KarabinerRestoreResult {
+        guard FileManager.default.fileExists(atPath: backup.url.path) else {
+            throw KarabinerConfigServiceError.configNotFound
+        }
+
+        let data = try Data(contentsOf: backup.url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let config = object as? [String: Any] else {
+            throw KarabinerConfigServiceError.invalidConfig
+        }
+
+        let preRestoreBackupURL = try backupConfig()
+        try writeConfig(config)
+
+        return KarabinerRestoreResult(
+            restoredURL: backup.url,
+            preRestoreBackupURL: preRestoreBackupURL
+        )
     }
 
     public func applyCustomShortcuts(_ definitions: [ShortcutDefinition]) throws -> KarabinerApplyResult {

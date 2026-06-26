@@ -13,6 +13,7 @@ struct KarabinerPlusCoreCheck {
         try checkMessagesAndPreviewRecommendations()
         try checkConfigServiceReadsCustomShortcuts()
         try checkConfigServiceCustomMergeAndBackup()
+        try checkConfigServiceListsAndRestoresBackups()
         try checkConfigServiceModifierOverlapConflicts()
         try checkConfigServiceRecommendedMergeAndConflictDetection()
         print("KarabinerPlusCoreCheck passed")
@@ -423,6 +424,43 @@ struct KarabinerPlusCoreCheck {
         )
     }
 
+    private static func checkConfigServiceListsAndRestoresBackups() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(named: "Before Restore")
+
+        let clock = SequenceClock(start: Date(timeIntervalSince1970: 1_719_343_200))
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL,
+            now: clock.now
+        )
+
+        let olderBackupURL = try service.backupConfig()
+        try fixture.writeConfig(named: "After Restore")
+        let newerBackupURL = try service.backupConfig()
+
+        let backups = try service.listBackups()
+        try expect(
+            backups.map(\.name) == [newerBackupURL.lastPathComponent, olderBackupURL.lastPathComponent],
+            "backups should list newest first"
+        )
+
+        let result = try service.restoreBackup(backups[1])
+        try expect(
+            FileManager.default.fileExists(atPath: result.preRestoreBackupURL.path),
+            "restore should create a pre-restore backup"
+        )
+
+        let restoredConfig = try fixture.readConfig()
+        let restoredProfile = try selectedProfile(from: restoredConfig)
+        try expect(
+            restoredProfile["name"] as? String == "Before Restore",
+            "restore should replace the active config with the selected backup"
+        )
+    }
+
     private static func checkConfigServiceRecommendedMergeAndConflictDetection() throws {
         let fixture = try KarabinerFixture()
         defer { try? fixture.remove() }
@@ -571,6 +609,24 @@ private struct KarabinerFixture {
         try data.write(to: configURL)
     }
 
+    func writeConfig(named profileName: String) throws {
+        try writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": profileName,
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+    }
+
     func readConfig() throws -> [String: Any] {
         let data = try Data(contentsOf: configURL)
         return try expectDictionary(
@@ -651,5 +707,18 @@ struct CheckFailure: Error, CustomStringConvertible {
 
     var description: String {
         message
+    }
+}
+
+private final class SequenceClock: @unchecked Sendable {
+    private var nextDate: Date
+
+    init(start: Date) {
+        nextDate = start
+    }
+
+    func now() -> Date {
+        defer { nextDate = nextDate.addingTimeInterval(1) }
+        return nextDate
     }
 }

@@ -10,8 +10,9 @@ It does not bundle, fork, or replace Karabiner-Elements. Karabiner-Elements stil
 - Start screen with the clearest next action.
 - Connect checks official Karabiner-Elements, config readiness, permissions, and backups.
 - Backup before every config write.
+- Safety recovery center for backup history, restore, and undoing the latest Karabiner+ change.
 - Shortcut Coach: opt-in local active-app usage tracking while the app is open.
-- Create: build custom remaps from safe templates or from scratch without editing Karabiner JSON.
+- Create: build custom remaps from safe templates, manual pickers, or in-app shortcut capture without editing Karabiner JSON.
 - Saved Studio shortcuts are preserved as a list instead of being overwritten one at a time.
 - App-aware recommendation packs for Slack, browsers, Messages, media apps, and Preview.
 - Conservative conflict checks before writes.
@@ -38,6 +39,16 @@ open "build/Karabiner+.app"
 ```
 
 The repo currently builds from source with Swift command-line tools. A signed/notarized release is not part of this first version.
+
+## Unsigned Alpha Package
+
+You can make an unsigned zip for GitHub Releases:
+
+```bash
+./scripts/package-release.sh
+```
+
+The zip lands in `dist/`. Because there is no Apple Developer ID yet, macOS may require users to right-click `Karabiner+.app` and choose `Open`. A smoother public release needs Developer ID signing and Apple notarization.
 
 ## Updating
 

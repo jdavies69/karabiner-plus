@@ -8,9 +8,13 @@ struct SafetyView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 updateCard
+                recoveryCard
                 writeRulesCard
                 privacyCard
                 pathsCard
+                if !model.setupMessage.isEmpty {
+                    messageCard(title: "Latest recovery update", message: model.setupMessage)
+                }
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -100,6 +104,67 @@ struct SafetyView: View {
         }
     }
 
+    private var recoveryCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Recovery")
+                            .font(.title3.weight(.semibold))
+                        Text("Restore a previous Karabiner config or undo the last Karabiner+ write from this session.")
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if model.backupHistory.isEmpty {
+                    Text("No backups yet. Create one from Connect or save a shortcut to make recovery available.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker("Backup", selection: $model.selectedBackupID) {
+                        ForEach(model.backupHistory) { backup in
+                            Text(model.formatBackup(backup)).tag(backup.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: 520, alignment: .leading)
+                }
+
+                HStack(spacing: 12) {
+                    Button("Restore Selected Backup") {
+                        model.restoreSelectedBackup()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!model.canRestoreSelectedBackup)
+
+                    Button("Undo Last Change") {
+                        model.undoLastConfigWrite()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!model.canUndoLastChange)
+
+                    Button("Open Backups Folder") {
+                        model.openBackupDirectory()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Refresh") {
+                        model.refreshStatus()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Text(model.lastUndoBackup == nil ? "Undo appears after Karabiner+ saves, applies, removes, or restores a config." : "Undo target: \(model.lastUndoBackup?.name ?? "")")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var privacyCard: some View {
         card {
             VStack(alignment: .leading, spacing: 10) {
@@ -144,5 +209,17 @@ struct SafetyView: View {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
+    }
+
+    private func messageCard(title: String, message: String) -> some View {
+        card {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(title)
+                    .font(.headline)
+                Text(message)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
     }
 }

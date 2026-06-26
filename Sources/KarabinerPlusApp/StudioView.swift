@@ -112,6 +112,7 @@ struct StudioView: View {
                         Text("When I press")
                             .font(.headline)
                         keyPicker(title: "Key", selection: $model.draft.sourceKey)
+                        captureControls(for: .source)
                         modifierGrid(title: "Held with it", modifiers: $model.draft.sourceModifiers)
                     }
 
@@ -124,6 +125,7 @@ struct StudioView: View {
                         Text("Make it act like")
                             .font(.headline)
                         keyPicker(title: "Key", selection: $model.draft.outputKey)
+                        captureControls(for: .output)
                         modifierGrid(title: "Keys sent with it", modifiers: $model.draft.outputModifiers)
                     }
                 }
@@ -271,6 +273,24 @@ struct StudioView: View {
                     )
                 )
                 .toggleStyle(.checkbox)
+            }
+        }
+        .frame(width: 190, alignment: .leading)
+    }
+
+    private func captureControls(for target: AppModel.CaptureTarget) -> some View {
+        HStack(spacing: 8) {
+            Button(model.captureTarget == target ? "Listening..." : "Capture") {
+                model.beginShortcutCapture(target)
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.captureTarget == target)
+
+            if model.captureTarget == target {
+                Button("Cancel") {
+                    model.cancelShortcutCapture()
+                }
+                .buttonStyle(.borderless)
             }
         }
         .frame(width: 190, alignment: .leading)

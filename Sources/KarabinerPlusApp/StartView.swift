@@ -8,6 +8,7 @@ struct StartView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 hero
+                onboardingCard
                 nextSteps
                 trustStrip
             }
@@ -38,7 +39,7 @@ struct StartView: View {
 
     private var nextSteps: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Start here")
+            Text("Explore")
                 .font(.title2.weight(.semibold))
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 14)], alignment: .leading, spacing: 14) {
@@ -83,6 +84,71 @@ struct StartView: View {
                 }
             }
         }
+    }
+
+    private var onboardingCard: some View {
+        let total = model.onboardingSteps.count
+        let completed = model.completedOnboardingCount
+        let primaryStep = model.primaryOnboardingStep
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Friend-ready setup")
+                        .font(.title2.weight(.semibold))
+                    Text("\(completed) of \(total) essentials complete")
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button(primaryStep.buttonTitle) {
+                    model.navigate(to: primaryStep.section)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            ProgressView(value: Double(completed), total: Double(total))
+                .progressViewStyle(.linear)
+                .frame(maxWidth: 680)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
+                ForEach(model.onboardingSteps) { step in
+                    Button {
+                        model.navigate(to: step.section)
+                    } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: step.isComplete ? "checkmark.circle.fill" : "circle")
+                                .font(.headline)
+                                .foregroundStyle(step.isComplete ? .green : .secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(step.title)
+                                    .font(.headline)
+                                Text(step.detail)
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+                    }
+                    .buttonStyle(.plain)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.primary.opacity(step.isComplete ? 0.08 : 0.14), lineWidth: 1)
+                    )
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: 900, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 
     private var trustStrip: some View {
