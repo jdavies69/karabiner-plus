@@ -20,7 +20,7 @@ struct SafetyView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Safety")
                 .font(.largeTitle.weight(.semibold))
-            Text("Karabiner+ stays local, writes through the core config service, and creates backups before each shortcut change.")
+            Text("Karabiner+ stays local, preserves unrelated Karabiner rules, and creates backups before each shortcut change.")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 720, alignment: .leading)
         }
@@ -33,8 +33,8 @@ struct SafetyView: View {
                     .font(.title3.weight(.semibold))
                 bullet("Custom and recommended shortcut writes require an existing ~/.config/karabiner/karabiner.json.")
                 bullet("Each apply action creates a timestamped backup before writing.")
-                bullet("Shortcut Studio creates global shortcuts only in V1.")
-                bullet("Risky Command-based global shortcuts are surfaced before apply.")
+                bullet("Create saves the full Karabiner+ Studio shortcut list instead of overwriting one shortcut at a time.")
+                bullet("Risky global shortcuts and plain-key remaps are surfaced before apply.")
             }
         }
     }

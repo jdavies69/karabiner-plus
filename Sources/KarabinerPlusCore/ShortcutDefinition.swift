@@ -3,6 +3,13 @@ import Foundation
 private let karabinerPlusCustomPrefix = "[Karabiner+] Custom:"
 private let riskyShortcutKeys: Set<String> = ["q", "w", "tab", "spacebar", "c", "v", "x", "z", "s"]
 private let commandModifiers: Set<String> = ["command", "left_command", "right_command"]
+private let plainTextKeys: Set<String> = Set("abcdefghijklmnopqrstuvwxyz0123456789".map(String.init))
+    .union([
+        "tab", "spacebar", "return_or_enter", "delete_or_backspace", "forward_delete",
+        "comma", "period", "slash", "semicolon", "quote", "open_bracket", "close_bracket",
+        "hyphen", "minus", "equal_sign", "backslash", "grave_accent_and_tilde",
+        "left_arrow", "right_arrow", "up_arrow", "down_arrow",
+    ])
 
 public struct ShortcutDefinition: Equatable, Sendable {
     public let name: String
@@ -26,19 +33,37 @@ public struct ShortcutDefinition: Equatable, Sendable {
     }
 
     public var warnings: [ShortcutWarning] {
-        guard riskyShortcutKeys.contains(sourceKey) else {
-            return []
+        var warnings: [ShortcutWarning] = []
+
+        if sourceModifiers.isEmpty && plainTextKeys.contains(sourceKey) {
+            warnings.append(
+                ShortcutWarning(
+                    message: "\(formatKey(sourceKey)) will stop typing normally everywhere. Add a modifier unless you really mean to replace that key."
+                )
+            )
         }
 
-        guard sourceModifiers.contains(where: { commandModifiers.contains($0) }) else {
-            return []
+        if riskyShortcutKeys.contains(sourceKey) && sourceModifiers.contains(where: { commandModifiers.contains($0) }) {
+            warnings.append(
+                ShortcutWarning(
+                    message: "\(formatWarningShortcut(modifiers: sourceModifiers, key: sourceKey)) is a risky macOS shortcut and may override a common system action."
+                )
+            )
         }
 
-        return [
-            ShortcutWarning(
-                message: "\(formatWarningShortcut(modifiers: sourceModifiers, key: sourceKey)) is a risky macOS shortcut and may override a common system action."
-            ),
-        ]
+        if riskyShortcutKeys.contains(outputKey) && outputModifiers.contains(where: { commandModifiers.contains($0) }) {
+            warnings.append(
+                ShortcutWarning(
+                    message: "This sends \(formatWarningShortcut(modifiers: outputModifiers, key: outputKey)), which may trigger a common macOS action."
+                )
+            )
+        }
+
+        return warnings
+    }
+
+    public var isNoOp: Bool {
+        sourceKey == outputKey && sourceModifiers == outputModifiers
     }
 
     private static func normalizeModifiers(_ modifiers: [String]) -> [String] {

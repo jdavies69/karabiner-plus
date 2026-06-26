@@ -88,6 +88,30 @@ const modifierAliases = new Map([
 ]);
 
 const riskyShortcutKeys = new Set(["q", "w", "tab", "spacebar", "c", "v", "x", "z", "s"]);
+const plainTextKeys = new Set([
+  ..."abcdefghijklmnopqrstuvwxyz0123456789".split(""),
+  "tab",
+  "spacebar",
+  "return_or_enter",
+  "delete_or_backspace",
+  "forward_delete",
+  "comma",
+  "period",
+  "slash",
+  "semicolon",
+  "quote",
+  "open_bracket",
+  "close_bracket",
+  "hyphen",
+  "minus",
+  "equal_sign",
+  "backslash",
+  "grave_accent_and_tilde",
+  "left_arrow",
+  "right_arrow",
+  "up_arrow",
+  "down_arrow",
+]);
 
 export function validateCustomShortcut(definition) {
   const normalized = normalizeCustomShortcut(definition);
@@ -119,6 +143,15 @@ export function validateCustomShortcut(definition) {
     if (!modifierCatalogById.has(modifier)) {
       errors.push(`unknown outputModifier: ${modifier}`);
     }
+  }
+
+  if (
+    normalized.sourceKey &&
+    normalized.outputKey &&
+    normalized.sourceKey === normalized.outputKey &&
+    sameArray(normalized.sourceModifiers, normalized.outputModifiers)
+  ) {
+    errors.push("source and output are the same");
   }
 
   const warnings = getRiskyShortcutWarnings(normalized);
@@ -214,21 +247,31 @@ function describeCustomShortcut(shortcut) {
 }
 
 function getRiskyShortcutWarnings(shortcut) {
-  if (!shortcut.sourceKey || shortcut.sourceModifiers.length === 0) {
-    return [];
+  const warnings = [];
+
+  if (shortcut.sourceModifiers.length === 0 && plainTextKeys.has(shortcut.sourceKey)) {
+    warnings.push(
+      `${formatShortcutWarning([], shortcut.sourceKey)} will stop typing normally everywhere. Add a modifier unless you really mean to replace that key.`
+    );
   }
 
-  if (!shortcut.sourceModifiers.some((modifier) => isCommandModifier(modifier))) {
-    return [];
+  if (
+    shortcut.sourceKey &&
+    shortcut.sourceModifiers.some((modifier) => isCommandModifier(modifier)) &&
+    riskyShortcutKeys.has(shortcut.sourceKey)
+  ) {
+    warnings.push(
+      `${formatShortcutWarning(shortcut.sourceModifiers, shortcut.sourceKey)} is a risky macOS shortcut and may override a common system action.`
+    );
   }
 
-  if (!riskyShortcutKeys.has(shortcut.sourceKey)) {
-    return [];
+  if (riskyShortcutKeys.has(shortcut.outputKey) && shortcut.outputModifiers.some((modifier) => isCommandModifier(modifier))) {
+    warnings.push(
+      `This sends ${formatShortcutWarning(shortcut.outputModifiers, shortcut.outputKey)}, which may trigger a common macOS action.`
+    );
   }
 
-  return [
-    `${formatShortcutWarning(shortcut.sourceModifiers, shortcut.sourceKey)} is a risky macOS shortcut and may override a common system action.`,
-  ];
+  return warnings;
 }
 
 function isCommandModifier(modifier) {
@@ -251,4 +294,8 @@ function formatShortcutWarning(modifiers, key) {
   ];
 
   return parts.join("-");
+}
+
+function sameArray(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }

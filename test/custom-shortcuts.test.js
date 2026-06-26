@@ -74,6 +74,56 @@ test("validateCustomShortcut warns about risky global Mac shortcuts", () => {
   assert.ok(result.warnings.some((warning) => warning.includes("Command-Q")));
 });
 
+test("validateCustomShortcut warns before replacing normal typing keys", () => {
+  const result = validateCustomShortcut({
+    name: "A to Escape",
+    sourceKey: "a",
+    sourceModifiers: [],
+    outputKey: "escape",
+    outputModifiers: [],
+  });
+
+  assert.equal(result.ok, true);
+  assert.ok(result.warnings.some((warning) => warning.includes("A will stop typing normally everywhere")));
+
+  const spaceResult = validateCustomShortcut({
+    name: "Space to Escape",
+    sourceKey: "spacebar",
+    sourceModifiers: [],
+    outputKey: "escape",
+    outputModifiers: [],
+  });
+
+  assert.equal(spaceResult.ok, true);
+  assert.ok(spaceResult.warnings.some((warning) => warning.includes("Spacebar will stop typing normally everywhere")));
+});
+
+test("validateCustomShortcut warns when output sends a risky Mac shortcut", () => {
+  const result = validateCustomShortcut({
+    name: "Send Quit",
+    sourceKey: "j",
+    sourceModifiers: ["right_command"],
+    outputKey: "q",
+    outputModifiers: ["command"],
+  });
+
+  assert.equal(result.ok, true);
+  assert.ok(result.warnings.some((warning) => warning.includes("This sends Command-Q")));
+});
+
+test("validateCustomShortcut rejects no-op remaps", () => {
+  const result = validateCustomShortcut({
+    name: "Escape to Escape",
+    sourceKey: "escape",
+    sourceModifiers: [],
+    outputKey: "escape",
+    outputModifiers: [],
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes("source and output are the same")));
+});
+
 test("planCustomShortcutApplication blocks conflicting custom shortcuts", () => {
   const config = buildDefaultConfig();
   const profile = findSelectedProfile(config);

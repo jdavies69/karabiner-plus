@@ -18,7 +18,9 @@ struct ContentView: View {
                     .opacity(0.95)
                     .ignoresSafeArea()
 
-                switch model.selectedSection ?? .setup {
+                switch model.selectedSection ?? .start {
+                case .start:
+                    StartView(model: model)
                 case .setup:
                     SetupView(model: model)
                 case .coach:

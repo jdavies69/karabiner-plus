@@ -7,10 +7,12 @@ struct SetupView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                statusCard
+                readinessCard
                 actionsCard
+                permissionsCard
+                advancedCard
                 if !model.setupMessage.isEmpty {
-                    messageCard(title: "Setup Status", message: model.setupMessage)
+                    messageCard(title: "Latest update", message: model.setupMessage)
                 }
             }
             .padding(24)
@@ -20,25 +22,56 @@ struct SetupView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Setup")
+            Text("Connect Karabiner")
                 .font(.largeTitle.weight(.semibold))
-            Text("Check the local Karabiner configuration, install the official app, and make a backup before changing shortcuts.")
+            Text("Karabiner+ works with the official Karabiner-Elements app. It does not replace the keyboard driver; it gives you a safer setup, backup, and shortcut creation layer.")
                 .font(.body)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: 720, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 760, alignment: .leading)
         }
     }
 
-    private var statusCard: some View {
+    private var readinessCard: some View {
         card {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Local Status")
-                    .font(.title3.weight(.semibold))
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: model.hasKarabinerConfig ? "checkmark.circle.fill" : "exclamationmark.circle")
+                        .font(.title)
+                        .foregroundStyle(model.hasKarabinerConfig ? .green : .orange)
 
-                statusRow(label: "Karabiner config", value: model.setupStatus?.configExists == true ? "Found" : "Missing")
-                statusRow(label: "Active profile", value: model.setupStatus?.activeProfileName ?? "Unknown")
-                statusRow(label: "Homebrew", value: model.homebrewAvailable ? "Available" : "Not found")
-                statusRow(label: "Config path", value: model.service.configURL.path)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(model.setupHeadline)
+                            .font(.title2.weight(.semibold))
+                        Text(model.setupSubheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    checklistRow(
+                        done: model.karabinerAppInstalled,
+                        title: "Official Karabiner-Elements app",
+                        detail: model.karabinerAppInstalled ? "Installed on this Mac" : "Download or install it first"
+                    )
+                    checklistRow(
+                        done: model.hasKarabinerConfig,
+                        title: "Karabiner config",
+                        detail: model.hasKarabinerConfig ? "Ready to write safely" : "Open Karabiner once to create it"
+                    )
+                    checklistRow(
+                        done: model.setupStatus?.activeProfileName != nil,
+                        title: "Active profile",
+                        detail: model.setupStatus?.activeProfileName ?? "Unknown until config exists"
+                    )
+                    checklistRow(
+                        done: model.hasKarabinerConfig,
+                        title: "Backup protection",
+                        detail: model.hasKarabinerConfig ? "Every save creates a backup first" : "Available after config is ready"
+                    )
+                }
             }
         }
     }
@@ -46,41 +79,104 @@ struct SetupView: View {
     private var actionsCard: some View {
         card {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Actions")
+                Text("Next action")
                     .font(.title3.weight(.semibold))
 
                 HStack(spacing: 12) {
+                    if model.karabinerAppInstalled {
+                        Button("Open Karabiner-Elements") {
+                            model.openKarabiner()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Download Karabiner-Elements") {
+                            model.openOfficialDownload()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+
                     Button("Refresh") {
                         model.refreshStatus()
                     }
                     .buttonStyle(.bordered)
 
-                    Button("Install via Homebrew") {
-                        Task {
-                            await model.installViaHomebrew()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(model.isBusy)
-
-                    Button("Open Official Download") {
-                        model.openOfficialDownload()
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                HStack(spacing: 12) {
-                    Button("Open Karabiner") {
-                        model.openKarabiner()
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Backup Config") {
+                    Button("Create Backup") {
                         model.backupConfig()
                     }
                     .buttonStyle(.bordered)
-                    .disabled(model.setupStatus?.configExists != true)
+                    .disabled(!model.hasKarabinerConfig)
                 }
+
+                if !model.hasKarabinerConfig {
+                    Text("Backup and shortcut buttons unlock after Karabiner-Elements creates its config.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                DisclosureGroup("Advanced install option") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Use this only if you already use Homebrew.")
+                            .foregroundStyle(.secondary)
+                        Button("Install with Homebrew") {
+                            Task {
+                                await model.installViaHomebrew()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(model.isBusy)
+                    }
+                    .padding(.top, 8)
+                }
+            }
+        }
+    }
+
+    private var permissionsCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("macOS permissions")
+                    .font(.title3.weight(.semibold))
+                Text("Karabiner-Elements may need Accessibility and Input Monitoring approval. Karabiner+ can open the right Settings pages, but macOS requires you to approve them.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 12) {
+                    Button("Open Accessibility") {
+                        model.openAccessibilitySettings()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Open Input Monitoring") {
+                        model.openInputMonitoringSettings()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var advancedCard: some View {
+        card {
+            DisclosureGroup("Advanced paths") {
+                VStack(alignment: .leading, spacing: 10) {
+                    statusRow(label: "Config", value: model.service.configURL.path)
+                    statusRow(label: "Backups", value: model.service.backupDirectoryURL.path)
+                    statusRow(label: "Homebrew", value: model.homebrewAvailable ? "Available" : "Not installed")
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+
+    private func checklistRow(done: Bool, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(done ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                Text(detail)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -89,7 +185,7 @@ struct SetupView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(width: 120, alignment: .leading)
+                .frame(width: 88, alignment: .leading)
             Text(value)
                 .textSelection(.enabled)
         }
@@ -98,7 +194,7 @@ struct SetupView: View {
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(18)
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: 820, alignment: .leading)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)

@@ -6,21 +6,24 @@ import SwiftUI
 @MainActor
 final class AppModel: ObservableObject {
     enum Section: String, CaseIterable, Hashable, Identifiable {
-        case setup = "Setup"
+        case start = "Start"
+        case setup = "Connect"
         case coach = "Coach"
-        case studio = "Studio"
+        case studio = "Create"
         case safety = "Safety"
 
         var id: String { rawValue }
 
         var icon: String {
             switch self {
+            case .start:
+                return "sparkles"
             case .setup:
-                return "switch.2"
+                return "checklist"
             case .coach:
                 return "chart.bar.doc.horizontal"
             case .studio:
-                return "slider.horizontal.3"
+                return "plus.square.on.square"
             case .safety:
                 return "externaldrive.badge.shield"
             }
@@ -28,9 +31,9 @@ final class AppModel: ObservableObject {
     }
 
     struct ShortcutDraft {
-        var name = "New Shortcut"
-        var sourceKey = "j"
-        var sourceModifiers: Set<String> = ["command", "shift"]
+        var name = "Caps Lock to Escape"
+        var sourceKey = "caps_lock"
+        var sourceModifiers: Set<String> = []
         var outputKey = "escape"
         var outputModifiers: Set<String> = []
 
@@ -47,11 +50,18 @@ final class AppModel: ObservableObject {
         var preview: String {
             let input = AppModel.describeShortcut(modifiers: sourceModifiers.sorted(), key: sourceKey)
             let output = AppModel.describeShortcut(modifiers: outputModifiers.sorted(), key: outputKey)
-            return "\(input) sends \(output)"
+            return "When you press \(input), Karabiner+ sends \(output)."
         }
     }
 
-    @Published var selectedSection: Section? = .setup
+    struct ShortcutTemplate: Identifiable {
+        let id: String
+        let title: String
+        let summary: String
+        let draft: ShortcutDraft
+    }
+
+    @Published var selectedSection: Section? = .start
     @Published var setupStatus: KarabinerConfigStatus?
     @Published var setupMessage = ""
     @Published var coachMessage = ""
@@ -60,18 +70,70 @@ final class AppModel: ObservableObject {
     @Published var isTracking = false
     @Published var trackingError = ""
     @Published var draft = ShortcutDraft()
+    @Published var savedShortcuts: [ShortcutDefinition] = []
 
     let service: KarabinerConfigService
     let recommendationEngine = RecommendationEngine()
-    let modifierOptions = ["command", "control", "option", "shift", "fn"]
+    let modifierOptions = ["command", "control", "option", "shift", "fn", "right_command"]
     let keyOptions = [
+        "caps_lock",
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
         "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
         "hyphen", "equal_sign", "open_bracket", "close_bracket", "backslash",
         "semicolon", "quote", "grave_accent_and_tilde", "comma", "period", "slash",
-        "tab", "spacebar", "escape", "return_or_enter",
+        "tab", "spacebar", "escape", "return_or_enter", "delete_or_backspace",
         "left_arrow", "right_arrow", "up_arrow", "down_arrow",
+    ]
+    let shortcutTemplates: [ShortcutTemplate] = [
+        ShortcutTemplate(
+            id: "caps_escape",
+            title: "Caps Lock to Escape",
+            summary: "A low-risk classic: turn an easy-to-hit key into Escape.",
+            draft: ShortcutDraft(
+                name: "Caps Lock to Escape",
+                sourceKey: "caps_lock",
+                sourceModifiers: [],
+                outputKey: "escape",
+                outputModifiers: []
+            )
+        ),
+        ShortcutTemplate(
+            id: "right_command_h",
+            title: "Right Command + H to Left Arrow",
+            summary: "Use the right Command key as a navigation layer.",
+            draft: ShortcutDraft(
+                name: "Right Command H to Left Arrow",
+                sourceKey: "h",
+                sourceModifiers: ["right_command"],
+                outputKey: "left_arrow",
+                outputModifiers: []
+            )
+        ),
+        ShortcutTemplate(
+            id: "right_command_l",
+            title: "Right Command + L to Right Arrow",
+            summary: "Pair this with H for fast cursor movement.",
+            draft: ShortcutDraft(
+                name: "Right Command L to Right Arrow",
+                sourceKey: "l",
+                sourceModifiers: ["right_command"],
+                outputKey: "right_arrow",
+                outputModifiers: []
+            )
+        ),
+        ShortcutTemplate(
+            id: "command_shift_j",
+            title: "Command + Shift + J to Escape",
+            summary: "A safe test shortcut that is easy to remove later.",
+            draft: ShortcutDraft(
+                name: "Command Shift J to Escape",
+                sourceKey: "j",
+                sourceModifiers: ["command", "shift"],
+                outputKey: "escape",
+                outputModifiers: []
+            )
+        ),
     ]
 
     private let userDefaults: UserDefaults
@@ -100,6 +162,26 @@ final class AppModel: ObservableObject {
             FileManager.default.isExecutableFile(atPath: "/usr/local/bin/brew")
     }
 
+    var karabinerAppInstalled: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "org.pqrs.Karabiner-Elements") != nil
+    }
+
+    var hasKarabinerConfig: Bool {
+        setupStatus?.configExists == true
+    }
+
+    var setupHeadline: String {
+        hasKarabinerConfig ? "Ready to customize" : "Connect Karabiner first"
+    }
+
+    var setupSubheadline: String {
+        if hasKarabinerConfig {
+            return "Karabiner+ found your active profile and can safely write shortcuts with a backup."
+        }
+
+        return "Install and open official Karabiner-Elements once so it can create its local config."
+    }
+
     var usageRecords: [UsageRecord] {
         mergeUsageRecords()
     }
@@ -112,17 +194,38 @@ final class AppModel: ObservableObject {
         "Karabiner+ tracks active app name, bundle identifier when available, active time estimate, and last seen time. It does not track keystrokes, window titles, document contents, or cloud data."
     }
 
+    var draftWarnings: [ShortcutWarning] {
+        draft.definition.warnings
+    }
+
+    var draftCanApply: Bool {
+        hasKarabinerConfig && !draft.definition.name.isEmpty && !draft.definition.isNoOp
+    }
+
     func refreshStatus() {
         do {
             setupStatus = try service.readStatus()
+            if setupStatus?.configExists == true {
+                savedShortcuts = try service.readCustomShortcuts()
+            } else {
+                savedShortcuts = []
+            }
             setupMessage = ""
         } catch {
-            setupMessage = "Could not read Karabiner status: \(error.localizedDescription)"
+            setupMessage = "Could not read Karabiner status: \(friendlyMessage(for: error))"
         }
     }
 
     func openOfficialDownload() {
         openURL("https://karabiner-elements.pqrs.org/")
+    }
+
+    func openAccessibilitySettings() {
+        openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+    }
+
+    func openInputMonitoringSettings() {
+        openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
     }
 
     func openKarabiner() {
@@ -137,10 +240,10 @@ final class AppModel: ObservableObject {
     func backupConfig() {
         do {
             let backupURL = try service.backupConfig()
-            setupMessage = "Backup created at \(backupURL.path)"
+            setupMessage = "Backup created: \(backupURL.lastPathComponent)"
             refreshStatus()
         } catch {
-            setupMessage = "Backup failed: \(error.localizedDescription)"
+            setupMessage = "Backup failed: \(friendlyMessage(for: error))"
         }
     }
 
@@ -149,7 +252,7 @@ final class AppModel: ObservableObject {
         defer { isBusy = false }
 
         guard homebrewAvailable else {
-            setupMessage = "Homebrew was not found at /opt/homebrew/bin/brew or /usr/local/bin/brew."
+            setupMessage = "Homebrew is not installed. Use Download Karabiner-Elements instead, or install Homebrew first."
             return
         }
 
@@ -161,7 +264,7 @@ final class AppModel: ObservableObject {
             setupMessage = result.isEmpty ? "Homebrew install finished." : result
             refreshStatus()
         } catch {
-            setupMessage = "Homebrew install failed: \(error.localizedDescription)"
+            setupMessage = "Homebrew install failed: \(friendlyMessage(for: error))"
         }
     }
 
@@ -206,7 +309,7 @@ final class AppModel: ObservableObject {
             coachMessage = "Applied \(recommendation.title) to \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
             refreshStatus()
         } catch {
-            coachMessage = "Could not apply \(recommendation.title): \(error.localizedDescription)"
+            coachMessage = "Could not apply \(recommendation.title): \(friendlyMessage(for: error))"
         }
     }
 
@@ -218,13 +321,90 @@ final class AppModel: ObservableObject {
             return
         }
 
+        guard !definition.isNoOp else {
+            studioMessage = "This shortcut sends the same key combination it receives, so there is nothing to save."
+            return
+        }
+
         do {
-            let result = try service.applyCustomShortcuts([definition])
-            studioMessage = "Applied \(definition.name) to \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
+            let shortcuts = replacingShortcut(definition, in: savedShortcuts)
+            let result = try service.applyCustomShortcuts(shortcuts)
+            savedShortcuts = shortcuts
+            studioMessage = "Saved \(definition.name) to \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
             refreshStatus()
         } catch {
-            studioMessage = "Could not apply shortcut: \(error.localizedDescription)"
+            studioMessage = "Could not save shortcut: \(friendlyMessage(for: error))"
         }
+    }
+
+    func deleteShortcut(_ definition: ShortcutDefinition) {
+        let shortcuts = savedShortcuts.filter {
+            $0.name.localizedCaseInsensitiveCompare(definition.name) != .orderedSame
+        }
+
+        do {
+            let result = try service.applyCustomShortcuts(shortcuts)
+            savedShortcuts = shortcuts
+            studioMessage = "Removed \(definition.name) from \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
+            refreshStatus()
+        } catch {
+            studioMessage = "Could not remove shortcut: \(friendlyMessage(for: error))"
+        }
+    }
+
+    func useTemplate(_ template: ShortcutTemplate) {
+        draft = template.draft
+        studioMessage = "Loaded template: \(template.title). Review it, then save it to Karabiner."
+    }
+
+    func resetDraft() {
+        draft = ShortcutDraft()
+        studioMessage = "Started a fresh shortcut."
+    }
+
+    func navigate(to section: Section) {
+        selectedSection = section
+    }
+
+    func label(forKey key: String) -> String {
+        Self.formatKey(key)
+    }
+
+    func label(forModifier modifier: String) -> String {
+        Self.formatModifier(modifier)
+    }
+
+    func shortcutLabel(modifiers: Set<String>, key: String) -> String {
+        Self.describeShortcut(modifiers: modifiers.sorted(), key: key)
+    }
+
+    func shortcutLabel(modifiers: [String], key: String) -> String {
+        Self.describeShortcut(modifiers: modifiers, key: key)
+    }
+
+    func preview(for definition: ShortcutDefinition) -> String {
+        let input = shortcutLabel(modifiers: definition.sourceModifiers, key: definition.sourceKey)
+        let output = shortcutLabel(modifiers: definition.outputModifiers, key: definition.outputKey)
+        return "\(input) -> \(output)"
+    }
+
+    func reason(for recommendation: Recommendation) -> String {
+        let matchedRecords = usageRecords.filter { record in
+            recommendation.matches(appName: record.name, bundleIdentifier: record.bundleIdentifier)
+        }
+        let seconds = matchedRecords.reduce(0) { $0 + $1.seconds }
+
+        guard seconds > 0 else {
+            return "Recommended from your local app usage."
+        }
+
+        let appNames = matchedRecords
+            .sorted { $0.seconds > $1.seconds }
+            .prefix(2)
+            .map(\.name)
+            .joined(separator: ", ")
+
+        return "Based on \(formatDuration(seconds)) in \(appNames)."
     }
 
     func containsModifier(_ modifier: String, in set: Set<String>) -> Bool {
@@ -258,6 +438,35 @@ final class AppModel: ObservableObject {
                 seconds: $0.seconds
             )
         }
+    }
+
+    private func replacingShortcut(_ definition: ShortcutDefinition, in shortcuts: [ShortcutDefinition]) -> [ShortcutDefinition] {
+        let filtered = shortcuts.filter {
+            $0.name.localizedCaseInsensitiveCompare(definition.name) != .orderedSame
+        }
+
+        return filtered + [definition]
+    }
+
+    private func friendlyMessage(for error: Error) -> String {
+        if let serviceError = error as? KarabinerConfigServiceError {
+            switch serviceError {
+            case .configNotFound:
+                return "Karabiner config was not found. Open Karabiner-Elements once, then refresh."
+            case .invalidConfig:
+                return "Karabiner config could not be read. Create a backup before editing it manually."
+            case let .conflicts(conflicts):
+                let details = conflicts
+                    .flatMap(\.ruleDescriptions)
+                    .prefix(3)
+                    .joined(separator: ", ")
+                return details.isEmpty
+                    ? "A shortcut conflict was found."
+                    : "A shortcut conflict was found with \(details)."
+            }
+        }
+
+        return error.localizedDescription
     }
 
     private func startActivationObserver() {
@@ -444,12 +653,28 @@ final class AppModel: ObservableObject {
         switch modifier {
         case "command":
             return "Command"
+        case "left_command":
+            return "Left Command"
+        case "right_command":
+            return "Right Command"
         case "control":
             return "Control"
+        case "left_control":
+            return "Left Control"
+        case "right_control":
+            return "Right Control"
         case "option":
             return "Option"
+        case "left_option":
+            return "Left Option"
+        case "right_option":
+            return "Right Option"
         case "shift":
             return "Shift"
+        case "left_shift":
+            return "Left Shift"
+        case "right_shift":
+            return "Right Shift"
         case "fn":
             return "Fn"
         default:
@@ -459,10 +684,14 @@ final class AppModel: ObservableObject {
 
     nonisolated private static func formatKey(_ key: String) -> String {
         switch key {
+        case "caps_lock":
+            return "Caps Lock"
         case "return_or_enter":
             return "Return"
         case "spacebar":
             return "Space"
+        case "delete_or_backspace":
+            return "Delete"
         case "left_arrow":
             return "Left Arrow"
         case "right_arrow":

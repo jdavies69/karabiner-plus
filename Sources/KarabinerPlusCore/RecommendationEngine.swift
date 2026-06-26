@@ -4,11 +4,33 @@ public struct Recommendation: Equatable, Sendable {
     public let id: String
     public let title: String
     public let summary: String
+    public let examples: [String]
+    public let bundleIdentifiers: [String]
+    public let appNames: [String]
 
-    public init(id: String, title: String, summary: String) {
+    public init(
+        id: String,
+        title: String,
+        summary: String,
+        examples: [String],
+        bundleIdentifiers: [String],
+        appNames: [String]
+    ) {
         self.id = id
         self.title = title
         self.summary = summary
+        self.examples = examples
+        self.bundleIdentifiers = bundleIdentifiers
+        self.appNames = appNames
+    }
+
+    public func matches(appName: String, bundleIdentifier: String) -> Bool {
+        if !bundleIdentifier.isEmpty && bundleIdentifiers.contains(where: { $0.caseInsensitiveCompare(bundleIdentifier) == .orderedSame }) {
+            return true
+        }
+
+        let lowercasedName = appName.lowercased()
+        return appNames.contains { lowercasedName.contains($0.lowercased()) }
     }
 }
 
@@ -18,7 +40,10 @@ public struct RecommendationEngine: Sendable {
             recommendation: Recommendation(
                 id: "slack",
                 title: "Slack",
-                summary: "Slack quick-switch and composition helpers."
+                summary: "Faster Slack search and channel switching.",
+                examples: ["Right Command + K opens Slack search"],
+                bundleIdentifiers: ["com.tinyspeck.slackmacgap"],
+                appNames: ["slack"]
             ),
             bundleIdentifiers: ["com.tinyspeck.slackmacgap"],
             appNames: ["slack"]
@@ -27,7 +52,15 @@ public struct RecommendationEngine: Sendable {
             recommendation: Recommendation(
                 id: "browser",
                 title: "Browsers",
-                summary: "Address bar and tab helpers for common browsers."
+                summary: "Address bar focus for Safari, Chrome, Arc, and Firefox.",
+                examples: ["Right Command + L focuses the address bar"],
+                bundleIdentifiers: [
+                    "com.apple.safari",
+                    "com.google.chrome",
+                    "company.thebrowser.browser",
+                    "org.mozilla.firefox",
+                ],
+                appNames: ["safari", "chrome", "arc", "firefox"]
             ),
             bundleIdentifiers: [
                 "com.apple.safari",
@@ -41,7 +74,10 @@ public struct RecommendationEngine: Sendable {
             recommendation: Recommendation(
                 id: "media",
                 title: "Media",
-                summary: "Playback helpers for music and video apps."
+                summary: "Playback controls that work without reaching for the menu bar.",
+                examples: ["Right Command + Space toggles play/pause"],
+                bundleIdentifiers: ["com.spotify.client", "com.apple.music"],
+                appNames: ["spotify", "music", "youtube"]
             ),
             bundleIdentifiers: ["com.spotify.client", "com.apple.music"],
             appNames: ["spotify", "music", "youtube"]
@@ -50,7 +86,10 @@ public struct RecommendationEngine: Sendable {
             recommendation: Recommendation(
                 id: "messages",
                 title: "Messages",
-                summary: "Conversation navigation helpers for Messages."
+                summary: "Small navigation helpers for heavy texting sessions.",
+                examples: ["Right Command + F opens search in Messages"],
+                bundleIdentifiers: ["com.apple.mobilesms"],
+                appNames: ["messages"]
             ),
             bundleIdentifiers: ["com.apple.mobilesms"],
             appNames: ["messages"]
@@ -59,7 +98,10 @@ public struct RecommendationEngine: Sendable {
             recommendation: Recommendation(
                 id: "preview",
                 title: "Preview",
-                summary: "Document navigation helpers for Preview."
+                summary: "Document navigation helpers for PDFs and screenshots.",
+                examples: ["Right Command + Down Arrow moves to the next page"],
+                bundleIdentifiers: ["com.apple.preview"],
+                appNames: ["preview"]
             ),
             bundleIdentifiers: ["com.apple.preview"],
             appNames: ["preview"]

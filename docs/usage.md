@@ -25,9 +25,10 @@ open "build/Karabiner+.app"
 
 ## Main Sections
 
-- Setup: refresh local status, install official Karabiner through Homebrew, open the official download page, open Karabiner, and create backups.
+- Start: see the next best action and jump into setup, shortcut creation, or coaching.
+- Connect: open official Karabiner-Elements, check config readiness, open permission screens, and create backups.
 - Coach: start or pause local usage tracking, delete usage history, view top apps, and apply recommended shortcut packs.
-- Studio: create one global custom shortcut and apply it safely with backup.
+- Create: create global custom remaps from safe templates or from scratch, then save them with backup.
 - Safety: review local privacy and config-write behavior.
 
 ## Shortcut Coach
@@ -50,9 +51,11 @@ Karabiner+ does not track:
 
 Usage history is stored locally in UserDefaults and can be deleted from the Coach screen.
 
-## Shortcut Studio
+## Create Shortcuts
 
-Shortcut Studio V1 creates global shortcuts only. Choose a name, source key, source modifiers, output key, and output modifiers. Karabiner+ previews the shortcut and warns about risky common Command shortcuts before applying.
+Create currently builds global remaps: when you press one key or key combination, Karabiner sends another. Choose a name, what you press, and what it should act like. Karabiner+ previews the result in plain English and warns about risky common Command shortcuts, no-op remaps, and plain key remaps that would affect normal typing or editing everywhere.
+
+Saving a shortcut writes the full Karabiner+ Studio shortcut list, so existing Studio shortcuts shown in the app are preserved. Unrelated Karabiner rules are not touched.
 
 Custom rules are labeled `[Karabiner+] Custom:`. Recommended rules are labeled `[Karabiner+] Recommended:`. Older `[Karabiner Starter]` rules are preserved for compatibility.
 

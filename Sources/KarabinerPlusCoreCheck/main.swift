@@ -6,10 +6,14 @@ struct KarabinerPlusCoreCheck {
     static func main() throws {
         try checkCustomRuleJSON()
         try checkCommandQWarning()
+        try checkOutputCommandWarning()
+        try checkPlainLetterWarning()
         try checkUsageAccumulator()
         try checkRecommendations()
         try checkMessagesAndPreviewRecommendations()
+        try checkConfigServiceReadsCustomShortcuts()
         try checkConfigServiceCustomMergeAndBackup()
+        try checkConfigServiceModifierOverlapConflicts()
         try checkConfigServiceRecommendedMergeAndConflictDetection()
         print("KarabinerPlusCoreCheck passed")
     }
@@ -75,6 +79,132 @@ struct KarabinerPlusCoreCheck {
         )
     }
 
+    private static func checkPlainLetterWarning() throws {
+        let definition = ShortcutDefinition(
+            name: "Replace A",
+            sourceKey: "a",
+            sourceModifiers: [],
+            outputKey: "escape",
+            outputModifiers: []
+        )
+
+        try expect(
+            definition.warnings == [
+                ShortcutWarning(
+                    message: "A will stop typing normally everywhere. Add a modifier unless you really mean to replace that key."
+                ),
+            ],
+            "plain key remaps should warn because they affect normal typing"
+        )
+
+        try expect(
+            ShortcutDefinition(
+                name: "Space to Escape",
+                sourceKey: "spacebar",
+                sourceModifiers: [],
+                outputKey: "escape",
+                outputModifiers: []
+            ).warnings == [
+                ShortcutWarning(
+                    message: "Spacebar will stop typing normally everywhere. Add a modifier unless you really mean to replace that key."
+                ),
+            ],
+            "plain spacebar remaps should warn because they affect normal typing"
+        )
+
+        try expect(
+            ShortcutDefinition(
+                name: "No Change",
+                sourceKey: "escape",
+                sourceModifiers: [],
+                outputKey: "escape",
+                outputModifiers: []
+            ).isNoOp,
+            "identical source and output should be detected as a no-op"
+        )
+    }
+
+    private static func checkConfigServiceModifierOverlapConflicts() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": "Daily",
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [
+                                [
+                                    "description": "Imported generic Command H",
+                                    "manipulators": [
+                                        basicManipulator(key: "h", mandatory: ["command"], toKey: "left_arrow"),
+                                    ],
+                                ],
+                            ],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL
+        )
+
+        do {
+            _ = try service.applyCustomShortcuts(
+                [
+                    ShortcutDefinition(
+                        name: "Right Command H",
+                        sourceKey: "h",
+                        sourceModifiers: ["right_command"],
+                        outputKey: "left_arrow",
+                        outputModifiers: []
+                    ),
+                ]
+            )
+            throw CheckFailure("custom apply should reject generic Command overlap with Right Command")
+        } catch let error as KarabinerConfigServiceError {
+            guard case .conflicts(let conflicts) = error else {
+                throw error
+            }
+
+            try expect(
+                conflicts.contains {
+                    $0.trigger.contains("key:h|mods:command") &&
+                        $0.trigger.contains("key:h|mods:right_command") &&
+                        $0.ruleDescriptions.contains("Imported generic Command H") &&
+                        $0.ruleDescriptions.contains("[Karabiner+] Custom: Right Command H")
+                },
+                "Swift conflict detection should catch generic Command overlap with Right Command"
+            )
+        }
+    }
+
+    private static func checkOutputCommandWarning() throws {
+        let definition = ShortcutDefinition(
+            name: "Dangerous Output",
+            sourceKey: "j",
+            sourceModifiers: ["right_command"],
+            outputKey: "q",
+            outputModifiers: ["command"]
+        )
+
+        try expect(
+            definition.warnings == [
+                ShortcutWarning(
+                    message: "This sends Command-Q, which may trigger a common macOS action."
+                ),
+            ],
+            "shortcuts that send risky Command actions should warn"
+        )
+    }
+
     private static func checkUsageAccumulator() throws {
         var accumulator = UsageAccumulator()
         let base = Date(timeIntervalSince1970: 1_719_343_200)
@@ -132,6 +262,67 @@ struct KarabinerPlusCoreCheck {
         try expect(
             engine.recommendations(for: entries).map(\.id) == ["preview", "messages"],
             "recommendations should include Preview and Messages packs"
+        )
+    }
+
+    private static func checkConfigServiceReadsCustomShortcuts() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": "Daily",
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [
+                                [
+                                    "description": "[Karabiner+] Custom: Caps Lock to Escape",
+                                    "manipulators": [
+                                        basicManipulator(key: "caps_lock", mandatory: [], toKey: "escape"),
+                                    ],
+                                ],
+                                [
+                                    "description": "[Karabiner Starter] Custom: Right Command H",
+                                    "manipulators": [
+                                        basicManipulator(key: "h", mandatory: ["right_command"], toKey: "left_arrow"),
+                                    ],
+                                ],
+                                [
+                                    "description": "Imported rule",
+                                    "manipulators": [
+                                        basicManipulator(key: "u", mandatory: ["control"], toKey: "page_up"),
+                                    ],
+                                ],
+                            ],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL
+        )
+        let shortcuts = try service.readCustomShortcuts()
+
+        try expect(
+            shortcuts.map(\.name) == ["Caps Lock to Escape", "Right Command H"],
+            "service should read native and legacy custom Studio shortcuts"
+        )
+        try expect(
+            shortcuts[0] == ShortcutDefinition(
+                name: "Caps Lock to Escape",
+                sourceKey: "caps_lock",
+                sourceModifiers: [],
+                outputKey: "escape",
+                outputModifiers: []
+            ),
+            "service should parse the custom shortcut shape back into a definition"
         )
     }
 

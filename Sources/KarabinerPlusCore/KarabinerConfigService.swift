@@ -82,6 +82,19 @@ public struct KarabinerConfigService: Sendable {
         return try applyRules(rules, replacing: .karabinerPlusCustom)
     }
 
+    public func readCustomShortcuts() throws -> [ShortcutDefinition] {
+        guard FileManager.default.fileExists(atPath: configURL.path) else {
+            return []
+        }
+
+        let config = try readConfig()
+        guard let profile = selectedProfile(in: config) else {
+            return []
+        }
+
+        return currentRules(in: profile).compactMap(customShortcutDefinition)
+    }
+
     public func applyRecommendedPacks(_ ids: [String]) throws -> KarabinerApplyResult {
         let rules = recommendedRuleDictionaries(for: ids)
         return try applyRules(rules, replacing: .karabinerPlusRecommended)
@@ -167,6 +180,42 @@ public struct KarabinerConfigService: Sendable {
         return try dictionary(for: rule)
     }
 
+    private func customShortcutDefinition(for rule: [String: Any]) -> ShortcutDefinition? {
+        let description = String(describing: rule["description"] ?? "")
+        let name: String
+
+        if description.hasPrefix("[Karabiner+] Custom:") {
+            name = description.replacingOccurrences(of: "[Karabiner+] Custom:", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if description.hasPrefix("[Karabiner Starter] Custom:") {
+            name = description.replacingOccurrences(of: "[Karabiner Starter] Custom:", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            return nil
+        }
+
+        guard
+            let manipulator = (rule["manipulators"] as? [[String: Any]])?.first,
+            let from = manipulator["from"] as? [String: Any],
+            let sourceKey = from["key_code"] as? String,
+            let to = (manipulator["to"] as? [[String: Any]])?.first,
+            let outputKey = to["key_code"] as? String
+        else {
+            return nil
+        }
+
+        let sourceModifiers = (from["modifiers"] as? [String: Any])?["mandatory"] as? [String] ?? []
+        let outputModifiers = to["modifiers"] as? [String] ?? []
+
+        return ShortcutDefinition(
+            name: name,
+            sourceKey: sourceKey,
+            sourceModifiers: sourceModifiers,
+            outputKey: outputKey,
+            outputModifiers: outputModifiers
+        )
+    }
+
     private func recommendedRuleDictionaries(for ids: [String]) -> [[String: Any]] {
         var seen = Set<String>()
         return ids
@@ -187,12 +236,23 @@ public struct KarabinerConfigService: Sendable {
         selectedRules: [[String: Any]],
         existingRules: [[String: Any]]
     ) -> [KarabinerRuleConflict] {
+        let entries = (existingRules + selectedRules).flatMap(triggerEntries(for:))
         var groupedDescriptions: [String: Set<String>] = [:]
 
-        for rule in existingRules + selectedRules {
-            let description = String(describing: rule["description"] ?? "Unnamed rule")
-            for trigger in triggers(for: rule) {
-                groupedDescriptions[trigger, default: []].insert(description)
+        for leftIndex in entries.indices {
+            for rightIndex in entries.indices.dropFirst(leftIndex + 1) {
+                let left = entries[leftIndex]
+                let right = entries[rightIndex]
+
+                guard triggersOverlap(left.details, right.details) else {
+                    continue
+                }
+
+                let trigger = left.trigger == right.trigger
+                    ? left.trigger
+                    : "\(left.trigger) overlaps \(right.trigger)"
+                groupedDescriptions[trigger, default: []].insert(left.description)
+                groupedDescriptions[trigger, default: []].insert(right.description)
             }
         }
 
@@ -207,12 +267,23 @@ public struct KarabinerConfigService: Sendable {
             .sorted { $0.trigger < $1.trigger }
     }
 
-    private func triggers(for rule: [String: Any]) -> [String] {
+    private func triggerEntries(for rule: [String: Any]) -> [TriggerEntry] {
+        let description = String(describing: rule["description"] ?? "Unnamed rule")
         let manipulators = rule["manipulators"] as? [[String: Any]] ?? []
-        return manipulators.compactMap(trigger(for:))
+        return manipulators.compactMap { manipulator in
+            guard let details = triggerDetails(for: manipulator) else {
+                return nil
+            }
+
+            return TriggerEntry(
+                description: description,
+                trigger: "key:\(details.source)|mods:\(details.mandatory.joined(separator: "+"))",
+                details: details
+            )
+        }
     }
 
-    private func trigger(for manipulator: [String: Any]) -> String? {
+    private func triggerDetails(for manipulator: [String: Any]) -> TriggerDetails? {
         guard
             let from = manipulator["from"] as? [String: Any],
             let source = (from["key_code"] as? String) ??
@@ -222,8 +293,92 @@ public struct KarabinerConfigService: Sendable {
             return nil
         }
 
-        let modifiers = (from["modifiers"] as? [String: Any])?["mandatory"] as? [String] ?? []
-        return "key:\(source)|mods:\(normalizeModifiers(modifiers).joined(separator: "+"))"
+        let modifierDictionary = from["modifiers"] as? [String: Any]
+        let mandatory = modifierDictionary?["mandatory"] as? [String] ?? []
+        let optional = modifierDictionary?["optional"] as? [String] ?? []
+
+        return TriggerDetails(
+            source: source,
+            mandatory: normalizeModifiers(mandatory),
+            optional: normalizeModifiers(optional),
+            optionalAny: optional.contains("any")
+        )
+    }
+
+    private func triggersOverlap(_ left: TriggerDetails, _ right: TriggerDetails) -> Bool {
+        guard left.source == right.source else {
+            return false
+        }
+
+        for leftRequired in expandMandatory(left.mandatory) {
+            for rightRequired in expandMandatory(right.mandatory) {
+                let pressed = leftRequired.union(rightRequired)
+                if matchesModifierState(left, pressed: pressed) && matchesModifierState(right, pressed: pressed) {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    private func matchesModifierState(_ details: TriggerDetails, pressed: Set<String>) -> Bool {
+        for required in expandMandatory(details.mandatory) {
+            guard required.isSubset(of: pressed) else {
+                continue
+            }
+
+            if extrasAllowed(details, required: required, pressed: pressed) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private func extrasAllowed(_ details: TriggerDetails, required: Set<String>, pressed: Set<String>) -> Bool {
+        if details.optionalAny {
+            return true
+        }
+
+        let optionalConcrete = concreteModifierSet(details.optional)
+        return pressed.allSatisfy { modifier in
+            required.contains(modifier) || optionalConcrete.contains(modifier)
+        }
+    }
+
+    private func expandMandatory(_ modifiers: [String]) -> [Set<String>] {
+        var sets: [Set<String>] = [Set()]
+
+        for modifier in modifiers {
+            let options = concreteOptions(for: modifier)
+            sets = sets.flatMap { current in
+                options.map { option in
+                    current.union(option)
+                }
+            }
+        }
+
+        return sets
+    }
+
+    private func concreteModifierSet(_ modifiers: [String]) -> Set<String> {
+        Set(modifiers.flatMap { concreteOptions(for: $0).flatMap(Array.init) })
+    }
+
+    private func concreteOptions(for modifier: String) -> [Set<String>] {
+        switch normalizeModifier(modifier) {
+        case "command":
+            return [["left_command"], ["right_command"]]
+        case "control":
+            return [["left_control"], ["right_control"]]
+        case "option":
+            return [["left_option"], ["right_option"]]
+        case "shift":
+            return [["left_shift"], ["right_shift"]]
+        default:
+            return [[normalizeModifier(modifier)]]
+        }
     }
 
     private func ensureProfiles(in config: inout [String: Any]) {
@@ -306,7 +461,22 @@ public struct KarabinerConfigService: Sendable {
     }
 
     private func normalizeModifiers(_ modifiers: [String]) -> [String] {
-        Array(Set(modifiers.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })).sorted()
+        Array(Set(modifiers.filter { $0 != "any" }.map { normalizeModifier($0) })).sorted()
+    }
+
+    private func normalizeModifier(_ modifier: String) -> String {
+        switch modifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "left_alt":
+            return "left_option"
+        case "right_alt":
+            return "right_option"
+        case "left_gui":
+            return "left_command"
+        case "right_gui":
+            return "right_command"
+        default:
+            return modifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
     }
     private func recommendedRule(for id: String) -> [String: Any]? {
         switch id {
@@ -394,6 +564,19 @@ public struct KarabinerConfigService: Sendable {
             return nil
         }
     }
+}
+
+private struct TriggerEntry {
+    let description: String
+    let trigger: String
+    let details: TriggerDetails
+}
+
+private struct TriggerDetails {
+    let source: String
+    let mandatory: [String]
+    let optional: [String]
+    let optionalAny: Bool
 }
 
 private enum OwnedRuleCategory {

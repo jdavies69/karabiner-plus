@@ -7,10 +7,12 @@ It does not bundle, fork, or replace Karabiner-Elements. Karabiner-Elements stil
 ## What You Get
 
 - A native windowed macOS app, not a menu bar item.
-- Setup checks for Karabiner config, Homebrew, and active profile.
+- Start screen with the clearest next action.
+- Connect checks official Karabiner-Elements, config readiness, permissions, and backups.
 - Backup before every config write.
 - Shortcut Coach: opt-in local active-app usage tracking while the app is open.
-- Shortcut Studio: create global custom shortcuts without editing Karabiner JSON.
+- Create: build custom remaps from safe templates or from scratch without editing Karabiner JSON.
+- Saved Studio shortcuts are preserved as a list instead of being overwritten one at a time.
 - App-aware recommendation packs for Slack, browsers, Messages, media apps, and Preview.
 - Conservative conflict checks before writes.
 
