@@ -52,66 +52,42 @@ func drawIcon(pixelSize: Int) throws -> Data {
     NSRect(x: 0, y: 0, width: size, height: size).fill()
 
     let graphite = NSColor(calibratedRed: 0.12, green: 0.14, blue: 0.17, alpha: 1.0)
-    let graphiteLine = NSColor(calibratedRed: 0.12, green: 0.14, blue: 0.17, alpha: 0.12)
     let accent = NSColor(calibratedRed: 0.93, green: 0.28, blue: 0.10, alpha: 1.0)
     func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
         NSPoint(x: scale(x), y: scale(y))
     }
 
-    let keyboardShadow = NSShadow()
-    keyboardShadow.shadowOffset = NSSize(width: 0, height: scale(-24))
-    keyboardShadow.shadowBlurRadius = scale(58)
-    keyboardShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.18)
-    keyboardShadow.set()
-
-    let keyboardPath = NSBezierPath(roundedRect: rect(100, 176, 824, 666), xRadius: scale(160), yRadius: scale(160))
-    NSGradient(colors: [
-        NSColor(calibratedRed: 1.00, green: 1.00, blue: 1.00, alpha: 0.82),
-        NSColor(calibratedRed: 0.90, green: 0.95, blue: 0.98, alpha: 0.62),
-        NSColor(calibratedRed: 0.72, green: 0.79, blue: 0.85, alpha: 0.48)
-    ])?.draw(in: keyboardPath, angle: -34)
-
-    keyboardShadow.shadowColor = .clear
-    keyboardShadow.set()
-    NSColor(calibratedWhite: 1.0, alpha: 0.62).setStroke()
-    keyboardPath.lineWidth = scale(5)
-    keyboardPath.stroke()
-
-    graphiteLine.setStroke()
-    keyboardPath.lineWidth = scale(4)
-    keyboardPath.stroke()
-
-    NSColor(calibratedWhite: 1.0, alpha: 0.72).setStroke()
-    let keyboardHighlight = NSBezierPath()
-    keyboardHighlight.move(to: point(196, 760))
-    keyboardHighlight.line(to: point(810, 760))
-    keyboardHighlight.lineWidth = scale(9)
-    keyboardHighlight.lineCapStyle = .round
-    keyboardHighlight.stroke()
-
-    let keyFill = NSColor(calibratedRed: 0.98, green: 0.99, blue: 1.0, alpha: 0.56)
+    let keyFill = NSColor(calibratedRed: 0.92, green: 0.96, blue: 0.99, alpha: 0.42)
     let keyStroke = NSColor(calibratedRed: 0.11, green: 0.13, blue: 0.16, alpha: 0.10)
     let keys: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
-        (188, 612, 132, 78), (350, 612, 110, 78), (490, 612, 110, 78), (630, 612, 110, 78), (770, 612, 78, 78),
-        (188, 486, 104, 82), (322, 486, 122, 82), (474, 486, 122, 82), (626, 486, 122, 82), (778, 486, 82, 82),
-        (188, 360, 146, 86), (364, 360, 112, 86), (506, 360, 112, 86), (648, 360, 112, 86), (790, 360, 72, 86),
-        (188, 260, 218, 76), (436, 260, 320, 76), (786, 260, 72, 76)
+        (500, 672, 118, 76), (648, 672, 118, 76), (796, 672, 88, 76),
+        (520, 536, 128, 80), (680, 536, 128, 80), (838, 536, 72, 80),
+        (522, 392, 154, 84), (708, 392, 146, 84),
+        (516, 254, 292, 82), (842, 254, 72, 82)
     ]
 
     for key in keys {
         let keyPath = NSBezierPath(roundedRect: rect(key.0, key.1, key.2, key.3), xRadius: scale(17), yRadius: scale(17))
+        let keyShadow = NSShadow()
+        keyShadow.shadowOffset = NSSize(width: 0, height: scale(-6))
+        keyShadow.shadowBlurRadius = scale(12)
+        keyShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.08)
+        keyShadow.set()
         keyFill.setFill()
         keyPath.fill()
+        keyShadow.shadowColor = .clear
+        keyShadow.set()
         keyStroke.setStroke()
         keyPath.lineWidth = scale(4)
         keyPath.stroke()
     }
 
     NSGraphicsContext.saveGraphicsState()
-    let carabinerCenter = point(346, 510)
+    let carabinerCenter = point(348, 510)
     let carabinerTransform = NSAffineTransform()
     carabinerTransform.translateX(by: carabinerCenter.x, yBy: carabinerCenter.y)
-    carabinerTransform.rotate(byDegrees: -7)
+    carabinerTransform.scale(by: 1.12)
+    carabinerTransform.rotate(byDegrees: -6)
     carabinerTransform.translateX(by: -carabinerCenter.x, yBy: -carabinerCenter.y)
     carabinerTransform.concat()
 
@@ -137,8 +113,8 @@ func drawIcon(pixelSize: Int) throws -> Data {
 
     let carabinerShadow = NSShadow()
     carabinerShadow.shadowOffset = NSSize(width: scale(12), height: scale(-16))
-    carabinerShadow.shadowBlurRadius = scale(26)
-    carabinerShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.24)
+    carabinerShadow.shadowBlurRadius = scale(34)
+    carabinerShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.28)
     carabinerShadow.set()
     NSColor(calibratedWhite: 1.0, alpha: 0.96).setFill()
     carabinerPath.fill()
@@ -146,21 +122,21 @@ func drawIcon(pixelSize: Int) throws -> Data {
     carabinerShadow.shadowColor = .clear
     carabinerShadow.set()
     graphite.setStroke()
-    carabinerPath.lineWidth = scale(17)
+    carabinerPath.lineWidth = scale(20)
     carabinerPath.stroke()
     NSColor(calibratedWhite: 1.0, alpha: 0.62).setStroke()
-    carabinerPath.lineWidth = scale(6)
+    carabinerPath.lineWidth = scale(7)
     carabinerPath.stroke()
 
     let gatePath = NSBezierPath()
     gatePath.move(to: point(390, 632))
     gatePath.curve(to: point(428, 388), controlPoint1: point(416, 574), controlPoint2: point(434, 458))
     graphite.setStroke()
-    gatePath.lineWidth = scale(19)
+    gatePath.lineWidth = scale(21)
     gatePath.lineCapStyle = .round
     gatePath.stroke()
     NSColor(calibratedWhite: 1.0, alpha: 0.92).setStroke()
-    gatePath.lineWidth = scale(9)
+    gatePath.lineWidth = scale(10)
     gatePath.stroke()
 
     for band in [(400, 538), (408, 478)] {
@@ -168,7 +144,7 @@ func drawIcon(pixelSize: Int) throws -> Data {
         NSColor(calibratedWhite: 1.0, alpha: 0.98).setFill()
         bandPath.fill()
         graphite.setStroke()
-        bandPath.lineWidth = scale(9)
+        bandPath.lineWidth = scale(10)
         bandPath.stroke()
     }
 
@@ -181,30 +157,22 @@ func drawIcon(pixelSize: Int) throws -> Data {
     NSGraphicsContext.restoreGraphicsState()
 
     let plusShadow = NSShadow()
-    plusShadow.shadowOffset = NSSize(width: 0, height: scale(-10))
-    plusShadow.shadowBlurRadius = scale(22)
-    plusShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.18)
+    plusShadow.shadowOffset = NSSize(width: 0, height: scale(-12))
+    plusShadow.shadowBlurRadius = scale(26)
+    plusShadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.22)
     plusShadow.set()
 
-    let plusPlate = NSBezierPath(roundedRect: rect(612, 356, 270, 270), xRadius: scale(76), yRadius: scale(76))
-    NSGradient(colors: [
-        NSColor(calibratedRed: 1.0, green: 1.0, blue: 1.0, alpha: 0.76),
-        NSColor(calibratedRed: 0.86, green: 0.90, blue: 0.93, alpha: 0.62)
-    ])?.draw(in: plusPlate, angle: -45)
-
-    plusShadow.shadowColor = .clear
-    plusShadow.set()
-    graphiteLine.setStroke()
-    plusPlate.lineWidth = scale(6)
-    plusPlate.stroke()
-
-    let horizontalPlus = NSBezierPath(roundedRect: rect(658, 468, 178, 58), xRadius: scale(29), yRadius: scale(29))
-    let verticalPlus = NSBezierPath(roundedRect: rect(718, 408, 58, 178), xRadius: scale(29), yRadius: scale(29))
-    graphite.setFill()
+    let horizontalPlus = NSBezierPath(roundedRect: rect(636, 460, 236, 74), xRadius: scale(37), yRadius: scale(37))
+    let verticalPlus = NSBezierPath(roundedRect: rect(717, 379, 74, 236), xRadius: scale(37), yRadius: scale(37))
+    accent.setFill()
     horizontalPlus.fill()
     verticalPlus.fill()
-    accent.withAlphaComponent(0.95).setFill()
-    NSBezierPath(roundedRect: rect(718, 408, 58, 58), xRadius: scale(29), yRadius: scale(29)).fill()
+    plusShadow.shadowColor = .clear
+    plusShadow.set()
+
+    NSColor(calibratedWhite: 1.0, alpha: 0.72).setFill()
+    NSBezierPath(roundedRect: rect(664, 484, 180, 26), xRadius: scale(13), yRadius: scale(13)).fill()
+    NSBezierPath(roundedRect: rect(741, 407, 26, 180), xRadius: scale(13), yRadius: scale(13)).fill()
 
     NSGraphicsContext.restoreGraphicsState()
 

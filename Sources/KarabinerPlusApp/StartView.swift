@@ -19,7 +19,7 @@ struct StartView: View {
 
     private var hero: some View {
         HStack(alignment: .center, spacing: 22) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
+            Image(nsImage: appIconImage)
                 .resizable()
                 .frame(width: 86, height: 86)
                 .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
@@ -35,6 +35,12 @@ struct StartView: View {
                     .frame(maxWidth: 820, alignment: .leading)
             }
         }
+    }
+
+    private var appIconImage: NSImage {
+        Bundle.main.url(forResource: "KarabinerPlus", withExtension: "icns")
+            .flatMap(NSImage.init(contentsOf:)) ??
+            NSApplication.shared.applicationIconImage
     }
 
     private var nextSteps: some View {
