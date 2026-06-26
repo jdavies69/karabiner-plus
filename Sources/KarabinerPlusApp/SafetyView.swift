@@ -7,6 +7,7 @@ struct SafetyView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                updateCard
                 writeRulesCard
                 privacyCard
                 pathsCard
@@ -23,6 +24,66 @@ struct SafetyView: View {
             Text("Karabiner+ stays local, preserves unrelated Karabiner rules, and creates backups before each shortcut change.")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 720, alignment: .leading)
+        }
+    }
+
+    private var updateCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: model.updateAvailable ? "arrow.down.circle.fill" : "arrow.triangle.2.circlepath")
+                        .font(.title2)
+                        .foregroundStyle(model.updateAvailable ? .orange : .secondary)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Updates")
+                            .font(.title3.weight(.semibold))
+                        Text(model.updateStatusTitle)
+                            .font(.headline)
+                        Text(model.updateStatusDetail)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    Button(model.isCheckingForUpdates ? "Checking..." : "Check for Updates") {
+                        Task {
+                            await model.checkForUpdates()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.isCheckingForUpdates)
+
+                    Button("Open GitHub") {
+                        model.openProjectOnGitHub()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Copy Update Command") {
+                        model.copyUpdateCommand()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Current build")
+                        .font(.callout.weight(.semibold))
+                    Text("Version \(model.appVersion) · \(model.buildBranch) · \(model.buildCommitShort) · \(model.buildDate)")
+                        .font(.callout.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+
+                    if model.updateAvailable {
+                        Text(model.updateCommand)
+                            .font(.callout.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .padding(10)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                }
+            }
         }
     }
 

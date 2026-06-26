@@ -71,9 +71,15 @@ final class AppModel: ObservableObject {
     @Published var trackingError = ""
     @Published var draft = ShortcutDraft()
     @Published var savedShortcuts: [ShortcutDefinition] = []
+    @Published var isCheckingForUpdates = false
+    @Published var updateStatusTitle = "Not checked yet"
+    @Published var updateStatusDetail = "Check GitHub to see whether a newer Karabiner+ build is available."
+    @Published var updateAvailable = false
+    @Published var latestUpdateURL: URL?
 
     let service: KarabinerConfigService
     let recommendationEngine = RecommendationEngine()
+    let projectURL = URL(string: "https://github.com/jdavies69/karabiner-plus")!
     let modifierOptions = ["command", "control", "option", "shift", "fn", "right_command"]
     let keyOptions = [
         "caps_lock",
@@ -202,6 +208,35 @@ final class AppModel: ObservableObject {
         hasKarabinerConfig && !draft.definition.name.isEmpty && !draft.definition.isNoOp
     }
 
+    var appVersion: String {
+        bundleString("CFBundleShortVersionString", fallback: "0.1.0")
+    }
+
+    var buildCommit: String {
+        bundleString("KarabinerPlusBuildCommit", fallback: "unknown")
+    }
+
+    var buildCommitShort: String {
+        shortCommit(buildCommit)
+    }
+
+    var buildBranch: String {
+        bundleString("KarabinerPlusBuildBranch", fallback: "unknown")
+    }
+
+    var buildDate: String {
+        bundleString("KarabinerPlusBuildDate", fallback: "unknown")
+    }
+
+    var sourcePath: String {
+        bundleString("KarabinerPlusSourcePath", fallback: "")
+    }
+
+    var updateCommand: String {
+        let path = sourcePath.isEmpty || sourcePath == "unknown" ? "<karabiner-plus repo>" : sourcePath
+        return #"cd "\#(path)" && git pull --ff-only && ./build.sh && open "build/Karabiner+.app""#
+    }
+
     func refreshStatus() {
         do {
             setupStatus = try service.readStatus()
@@ -218,6 +253,55 @@ final class AppModel: ObservableObject {
 
     func openOfficialDownload() {
         openURL("https://karabiner-elements.pqrs.org/")
+    }
+
+    func openProjectOnGitHub() {
+        NSWorkspace.shared.open(latestUpdateURL ?? projectURL)
+    }
+
+    func copyUpdateCommand() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(updateCommand, forType: .string)
+        updateStatusTitle = "Update command copied"
+        updateStatusDetail = "Paste it into Terminal to pull the latest repo changes, rebuild, and reopen Karabiner+."
+    }
+
+    func checkForUpdates() async {
+        guard !isCheckingForUpdates else { return }
+
+        isCheckingForUpdates = true
+        updateStatusTitle = "Checking GitHub..."
+        updateStatusDetail = "Comparing this build with the latest main branch commit."
+        updateAvailable = false
+        latestUpdateURL = nil
+
+        defer {
+            isCheckingForUpdates = false
+        }
+
+        do {
+            let latest = try await fetchLatestGitHubCommit()
+            latestUpdateURL = latest.htmlURL
+
+            guard buildCommit.count >= 7, buildCommit != "unknown" else {
+                updateStatusTitle = "Build version is unknown"
+                updateStatusDetail = "This app was built without git metadata. Latest GitHub commit is \(shortCommit(latest.sha))."
+                return
+            }
+
+            if latest.sha.caseInsensitiveCompare(buildCommit) == .orderedSame {
+                updateStatusTitle = "Karabiner+ is up to date"
+                updateStatusDetail = "This build matches the latest GitHub main commit: \(shortCommit(latest.sha))."
+                return
+            }
+
+            updateAvailable = true
+            updateStatusTitle = "Update available"
+            updateStatusDetail = "You are on \(buildCommitShort). GitHub main is \(shortCommit(latest.sha)): \(latest.messageLine)"
+        } catch {
+            updateStatusTitle = "Could not check for updates"
+            updateStatusDetail = friendlyMessage(for: error)
+        }
     }
 
     func openAccessibilitySettings() {
@@ -440,6 +524,28 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func fetchLatestGitHubCommit() async throws -> GitHubCommit {
+        var request = URLRequest(url: URL(string: "https://api.github.com/repos/jdavies69/karabiner-plus/commits/main")!)
+        request.setValue("KarabinerPlus/\(appVersion)", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw UpdateError.invalidResponse
+        }
+
+        guard 200..<300 ~= httpResponse.statusCode else {
+            throw UpdateError.httpStatus(httpResponse.statusCode)
+        }
+
+        let payload = try JSONDecoder().decode(GitHubCommitResponse.self, from: data)
+        return GitHubCommit(
+            sha: payload.sha,
+            htmlURL: URL(string: payload.htmlURL) ?? projectURL,
+            messageLine: payload.commit.message.components(separatedBy: .newlines).first ?? "Latest update"
+        )
+    }
+
     private func replacingShortcut(_ definition: ShortcutDefinition, in shortcuts: [ShortcutDefinition]) -> [ShortcutDefinition] {
         let filtered = shortcuts.filter {
             $0.name.localizedCaseInsensitiveCompare(definition.name) != .orderedSame
@@ -592,6 +698,18 @@ final class AppModel: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    private func bundleString(_ key: String, fallback: String) -> String {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? fallback
+    }
+
+    private func shortCommit(_ commit: String) -> String {
+        guard commit.count > 7 else {
+            return commit
+        }
+
+        return String(commit.prefix(7))
+    }
+
     private func runProcess(executable: String, arguments: [String]) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
@@ -724,6 +842,42 @@ struct UsageRecord: Codable, Identifiable {
 private struct UsageIdentity {
     let name: String
     let bundleIdentifier: String
+}
+
+private struct GitHubCommit {
+    let sha: String
+    let htmlURL: URL
+    let messageLine: String
+}
+
+private struct GitHubCommitResponse: Decodable {
+    let sha: String
+    let htmlURL: String
+    let commit: Commit
+
+    enum CodingKeys: String, CodingKey {
+        case sha
+        case htmlURL = "html_url"
+        case commit
+    }
+
+    struct Commit: Decodable {
+        let message: String
+    }
+}
+
+private enum UpdateError: LocalizedError {
+    case invalidResponse
+    case httpStatus(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "GitHub returned an unreadable response."
+        case let .httpStatus(status):
+            return "GitHub update check failed with status \(status)."
+        }
+    }
 }
 
 private enum ProcessError: LocalizedError {

@@ -71,6 +71,16 @@ struct StartView: View {
                 ) {
                     model.navigate(to: .coach)
                 }
+
+                actionCard(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "Keep Karabiner+ current",
+                    body: "Check GitHub for the newest build and copy the update command when there is something new.",
+                    buttonTitle: "Open Updates",
+                    isPrimary: false
+                ) {
+                    model.navigate(to: .safety)
+                }
             }
         }
     }
@@ -81,6 +91,7 @@ struct StartView: View {
             trustPill("Backs up before writes")
             trustPill("No keystroke tracking")
             trustPill("Local-only history")
+            trustPill("GitHub update check")
         }
     }
 

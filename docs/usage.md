@@ -29,7 +29,7 @@ open "build/Karabiner+.app"
 - Connect: open official Karabiner-Elements, check config readiness, open permission screens, and create backups.
 - Coach: start or pause local usage tracking, delete usage history, view top apps, and apply recommended shortcut packs.
 - Create: create global custom remaps from safe templates or from scratch, then save them with backup.
-- Safety: review local privacy and config-write behavior.
+- Safety: review local privacy, config-write behavior, backups, paths, and GitHub updates.
 
 ## Shortcut Coach
 
@@ -74,6 +74,18 @@ To roll back manually, copy the backup you want back to:
 ```
 
 Karabiner-Elements usually reloads automatically. If not, open Karabiner Settings or restart Karabiner-Elements.
+
+## Updates
+
+Karabiner+ is source-built right now, so it does not silently auto-update. Open Safety and press Check for Updates. The app compares the commit embedded during `./build.sh` with GitHub `main`.
+
+If an update is available, use Copy Update Command. It copies a command like:
+
+```bash
+cd "<your karabiner-plus repo>" && git pull --ff-only && ./build.sh && open "build/Karabiner+.app"
+```
+
+Run that in Terminal to pull the newest code, rebuild the app, and reopen it.
 
 ## Legacy Browser Prototype
 

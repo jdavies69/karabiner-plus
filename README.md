@@ -15,6 +15,7 @@ It does not bundle, fork, or replace Karabiner-Elements. Karabiner-Elements stil
 - Saved Studio shortcuts are preserved as a list instead of being overwritten one at a time.
 - App-aware recommendation packs for Slack, browsers, Messages, media apps, and Preview.
 - Conservative conflict checks before writes.
+- GitHub update check with a copyable pull-and-rebuild command for source-built installs.
 
 ## Privacy
 
@@ -37,6 +38,10 @@ open "build/Karabiner+.app"
 ```
 
 The repo currently builds from source with Swift command-line tools. A signed/notarized release is not part of this first version.
+
+## Updating
+
+Open `Safety` -> `Check for Updates`. Karabiner+ compares the current build commit with the latest `main` branch commit on GitHub. If an update exists, copy the update command from the app and run it in Terminal.
 
 ## Legacy Prototype
 
