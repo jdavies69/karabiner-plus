@@ -17,19 +17,25 @@ public struct ShortcutDefinition: Equatable, Sendable {
     public let sourceModifiers: [String]
     public let outputKey: String
     public let outputModifiers: [String]
+    public let appBundleIdentifier: String
+    public let appName: String
 
     public init(
         name: String,
         sourceKey: String,
         sourceModifiers: [String],
         outputKey: String,
-        outputModifiers: [String]
+        outputModifiers: [String],
+        appBundleIdentifier: String = "",
+        appName: String = ""
     ) {
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.sourceKey = sourceKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         self.sourceModifiers = ShortcutDefinition.normalizeModifiers(sourceModifiers)
         self.outputKey = outputKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         self.outputModifiers = ShortcutDefinition.normalizeModifiers(outputModifiers)
+        self.appBundleIdentifier = appBundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.appName = appName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public var warnings: [ShortcutWarning] {
@@ -64,6 +70,10 @@ public struct ShortcutDefinition: Equatable, Sendable {
 
     public var isNoOp: Bool {
         sourceKey == outputKey && sourceModifiers == outputModifiers
+    }
+
+    public var isAppSpecific: Bool {
+        !appBundleIdentifier.isEmpty
     }
 
     private static func normalizeModifiers(_ modifiers: [String]) -> [String] {
@@ -102,10 +112,24 @@ public enum ShortcutRuleBuilder {
                             keyCode: definition.outputKey,
                             modifiers: definition.outputModifiers.isEmpty ? nil : definition.outputModifiers
                         ),
-                    ]
+                    ],
+                    conditions: conditions(for: definition)
                 ),
             ]
         )
+    }
+
+    private static func conditions(for definition: ShortcutDefinition) -> [KarabinerCondition]? {
+        guard !definition.appBundleIdentifier.isEmpty else {
+            return nil
+        }
+
+        return [
+            KarabinerCondition(
+                type: "frontmost_application_if",
+                bundleIdentifiers: ["^\(NSRegularExpression.escapedPattern(for: definition.appBundleIdentifier))$"]
+            ),
+        ]
     }
 }
 
@@ -123,10 +147,27 @@ public struct KarabinerManipulator: Encodable, Equatable, Sendable {
     public let type = "basic"
     public let from: KarabinerFrom
     public let to: [KarabinerTo]
+    public let conditions: [KarabinerCondition]?
 
-    public init(from: KarabinerFrom, to: [KarabinerTo]) {
+    public init(from: KarabinerFrom, to: [KarabinerTo], conditions: [KarabinerCondition]? = nil) {
         self.from = from
         self.to = to
+        self.conditions = conditions
+    }
+}
+
+public struct KarabinerCondition: Encodable, Equatable, Sendable {
+    public let type: String
+    public let bundleIdentifiers: [String]
+
+    public init(type: String, bundleIdentifiers: [String]) {
+        self.type = type
+        self.bundleIdentifiers = bundleIdentifiers
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case bundleIdentifiers = "bundle_identifiers"
     }
 }
 

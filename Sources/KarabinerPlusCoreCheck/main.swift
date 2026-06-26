@@ -5,6 +5,7 @@ import KarabinerPlusCore
 struct KarabinerPlusCoreCheck {
     static func main() throws {
         try checkCustomRuleJSON()
+        try checkAppSpecificCustomRuleJSON()
         try checkCommandQWarning()
         try checkOutputCommandWarning()
         try checkPlainLetterWarning()
@@ -12,7 +13,9 @@ struct KarabinerPlusCoreCheck {
         try checkRecommendations()
         try checkMessagesAndPreviewRecommendations()
         try checkConfigServiceReadsCustomShortcuts()
+        try checkConfigServiceReadsAppSpecificCustomShortcuts()
         try checkConfigServiceCustomMergeAndBackup()
+        try checkConfigServicePreviewsCustomApplySummary()
         try checkConfigServiceListsAndRestoresBackups()
         try checkConfigServiceModifierOverlapConflicts()
         try checkConfigServiceRecommendedMergeAndConflictDetection()
@@ -59,6 +62,39 @@ struct KarabinerPlusCoreCheck {
         try expect(to.count == 1, "to should include one output")
         try expect(to[0]["key_code"] as? String == "escape", "output key should be encoded")
         try expect(to[0]["modifiers"] == nil, "empty output modifiers should be omitted")
+    }
+
+    private static func checkAppSpecificCustomRuleJSON() throws {
+        let definition = ShortcutDefinition(
+            name: "Slack Escape",
+            sourceKey: "j",
+            sourceModifiers: ["right_command"],
+            outputKey: "escape",
+            outputModifiers: [],
+            appBundleIdentifier: "com.tinyspeck.slackmacgap",
+            appName: "Slack"
+        )
+
+        let rule = ShortcutRuleBuilder.buildCustomRule(definition)
+        let dictionary = try jsonDictionary(rule)
+        let manipulators = try expectValue(
+            dictionary["manipulators"] as? [[String: Any]],
+            "custom rule should include manipulators"
+        )
+        let conditions = try expectValue(
+            manipulators[0]["conditions"] as? [[String: Any]],
+            "app-specific custom rule should include manipulator conditions"
+        )
+
+        try expect(conditions.count == 1, "app-specific custom rule should include one condition")
+        try expect(
+            conditions[0]["type"] as? String == "frontmost_application_if",
+            "app-specific custom rule should use a frontmost application condition"
+        )
+        try expect(
+            conditions[0]["bundle_identifiers"] as? [String] == ["^com\\.tinyspeck\\.slackmacgap$"],
+            "app-specific custom rule should use an exact bundle identifier condition"
+        )
     }
 
     private static func checkCommandQWarning() throws {
@@ -327,6 +363,64 @@ struct KarabinerPlusCoreCheck {
         )
     }
 
+    private static func checkConfigServiceReadsAppSpecificCustomShortcuts() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": "Daily",
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [
+                                [
+                                    "description": "[Karabiner+] Custom: Slack Escape",
+                                    "manipulators": [
+                                        basicManipulator(
+                                            key: "j",
+                                            mandatory: ["right_command"],
+                                            toKey: "escape",
+                                            conditions: [
+                                                [
+                                                    "type": "frontmost_application_if",
+                                                    "bundle_identifiers": ["^com\\.tinyspeck\\.slackmacgap$"],
+                                                ],
+                                            ]
+                                        ),
+                                    ],
+                                ],
+                            ],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL
+        )
+        let shortcuts = try service.readCustomShortcuts()
+
+        try expect(
+            shortcuts == [
+                ShortcutDefinition(
+                    name: "Slack Escape",
+                    sourceKey: "j",
+                    sourceModifiers: ["right_command"],
+                    outputKey: "escape",
+                    outputModifiers: [],
+                    appBundleIdentifier: "com.tinyspeck.slackmacgap"
+                ),
+            ],
+            "service should read app-specific custom shortcut conditions"
+        )
+    }
+
     private static func checkConfigServiceCustomMergeAndBackup() throws {
         let fixture = try KarabinerFixture()
         defer { try? fixture.remove() }
@@ -421,6 +515,68 @@ struct KarabinerPlusCoreCheck {
         try expect(
             descriptions.filter { $0 == "[Karabiner+] Custom: Launch Terminal" }.count == 1,
             "custom apply should replace owned custom rules without duplicating them"
+        )
+    }
+
+    private static func checkConfigServicePreviewsCustomApplySummary() throws {
+        let fixture = try KarabinerFixture()
+        defer { try? fixture.remove() }
+
+        try fixture.writeConfig(
+            [
+                "profiles": [
+                    [
+                        "name": "Daily",
+                        "selected": true,
+                        "complex_modifications": [
+                            "parameters": defaultComplexParameters(),
+                            "rules": [
+                                [
+                                    "description": "[Karabiner+] Custom: Old Studio Rule",
+                                    "manipulators": [
+                                        basicManipulator(key: "j", mandatory: ["right_command"], toKey: "escape"),
+                                    ],
+                                ],
+                                [
+                                    "description": "Imported rule",
+                                    "manipulators": [
+                                        basicManipulator(key: "u", mandatory: ["control"], toKey: "page_up"),
+                                    ],
+                                ],
+                            ],
+                        ],
+                        "simple_modifications": [],
+                    ],
+                ],
+            ]
+        )
+
+        let service = KarabinerConfigService(
+            configURL: fixture.configURL,
+            backupDirectoryURL: fixture.backupDirectoryURL
+        )
+
+        let summary = try service.previewCustomShortcutApply(
+            [
+                ShortcutDefinition(
+                    name: "New Studio Rule",
+                    sourceKey: "k",
+                    sourceModifiers: ["right_command"],
+                    outputKey: "escape",
+                    outputModifiers: []
+                ),
+            ]
+        )
+
+        try expect(
+            summary == KarabinerApplySummary(
+                activeProfileName: "Daily",
+                addedRuleCount: 1,
+                replacedOwnedRuleCount: 1,
+                preservedRuleCount: 1,
+                conflictCount: 0
+            ),
+            "custom preview summary should count added, replaced, preserved, and conflicts without writing"
         )
     }
 
@@ -654,14 +810,15 @@ private func basicManipulator(
     key: String,
     mandatory: [String],
     toKey: String,
-    toModifiers: [String] = []
+    toModifiers: [String] = [],
+    conditions: [[String: Any]] = []
 ) -> [String: Any] {
     var to: [String: Any] = ["key_code": toKey]
     if !toModifiers.isEmpty {
         to["modifiers"] = toModifiers
     }
 
-    return [
+    var manipulator: [String: Any] = [
         "type": "basic",
         "from": [
             "key_code": key,
@@ -672,6 +829,11 @@ private func basicManipulator(
         ],
         "to": [to],
     ]
+    if !conditions.isEmpty {
+        manipulator["conditions"] = conditions
+    }
+
+    return manipulator
 }
 
 private func defaultComplexParameters() -> [String: Any] {

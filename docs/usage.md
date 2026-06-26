@@ -25,10 +25,10 @@ open "build/Karabiner+.app"
 
 ## Main Sections
 
-- Start: see setup progress, the next best action, and jump into setup, shortcut creation, or coaching.
+- Start: see setup progress, the next best action, and launch the first-shortcut wizard.
 - Connect: open official Karabiner-Elements, check config readiness, open permission screens, and create backups.
 - Coach: start or pause local usage tracking, delete usage history, view top apps, and apply recommended shortcut packs.
-- Create: create global custom remaps from safe templates, manual pickers, or shortcut capture, then save them with backup.
+- Create: create global or app-specific custom remaps from safe templates, manual pickers, or shortcut capture, then review an apply summary before saving with backup.
 - Safety: review local privacy, config-write behavior, restore backups, undo the latest change, inspect paths, and check GitHub updates.
 
 ## Shortcut Coach
@@ -53,11 +53,15 @@ Usage history is stored locally in UserDefaults and can be deleted from the Coac
 
 ## Create Shortcuts
 
-Create currently builds global remaps: when you press one key or key combination, Karabiner sends another. Choose a name, what you press, and what it should act like. You can use the menus or press Capture to record a key combination while Karabiner+ is focused. Capture is local to the app and starts only after you press the button.
+Create builds global or app-specific remaps: when you press one key or key combination, Karabiner sends another. The first-shortcut wizard loads a safe `Caps Lock -> Escape` shortcut so new users can get to a working result quickly.
+
+Choose a name, what you press, what it should act like, and where it works. Use Everywhere for global shortcuts, or Current App to limit the shortcut to the frontmost app's bundle identifier. If the current app does not expose a bundle identifier, Karabiner+ keeps the shortcut global and shows a message.
+
+You can use the menus or press Capture to record a key combination while Karabiner+ is focused. Capture is local to the app and starts only after you press the button.
 
 Karabiner+ previews the result in plain English and warns about risky common Command shortcuts, no-op remaps, and plain key remaps that would affect normal typing or editing everywhere.
 
-Saving a shortcut writes the full Karabiner+ Studio shortcut list, so existing Studio shortcuts shown in the app are preserved. Unrelated Karabiner rules are not touched.
+Before writing, Karabiner+ shows an apply summary: Studio rules to write, Karabiner+-owned rules to replace, unrelated rules to preserve, and conflicts if any are found. Saving a shortcut writes the full Karabiner+ Studio shortcut list, so existing Studio shortcuts shown in the app are preserved. Unrelated Karabiner rules are not touched.
 
 Custom rules are labeled `[Karabiner+] Custom:`. Recommended rules are labeled `[Karabiner+] Recommended:`. Older `[Karabiner Starter]` rules are preserved for compatibility.
 
@@ -79,6 +83,8 @@ Karabiner-Elements usually reloads automatically. If not, open Karabiner Setting
 
 Safety also lists available backups. Use Restore Selected Backup to roll back to a previous config, or Undo Last Change to restore the backup created immediately before the latest Karabiner+ write in the current app session.
 
+Apply summaries are previews, not backups. Use Safety restore or undo when you need to roll back after a write.
+
 ## Unsigned Release Zip
 
 Without an Apple Developer ID, Karabiner+ can still produce an unsigned alpha zip:
@@ -87,7 +93,7 @@ Without an Apple Developer ID, Karabiner+ can still produce an unsigned alpha zi
 ./scripts/package-release.sh
 ```
 
-The archive is written to `dist/`. Users may need to right-click `Karabiner+.app` and choose Open because the app is not signed or notarized yet.
+The archive is written to `dist/`. This alpha zip is unsigned and not notarized. macOS Gatekeeper may warn that the developer cannot be verified and may block first launch. Only open it if you trust this source. For this alpha, the usual workaround is to right-click `Karabiner+.app` and choose Open; a smoother public release needs Developer ID signing and Apple notarization.
 
 ## Updates
 

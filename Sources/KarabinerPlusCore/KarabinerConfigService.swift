@@ -20,6 +20,28 @@ public struct KarabinerApplyResult: Equatable, Sendable {
     }
 }
 
+public struct KarabinerApplySummary: Equatable, Sendable {
+    public let activeProfileName: String?
+    public let addedRuleCount: Int
+    public let replacedOwnedRuleCount: Int
+    public let preservedRuleCount: Int
+    public let conflictCount: Int
+
+    public init(
+        activeProfileName: String?,
+        addedRuleCount: Int,
+        replacedOwnedRuleCount: Int,
+        preservedRuleCount: Int,
+        conflictCount: Int
+    ) {
+        self.activeProfileName = activeProfileName
+        self.addedRuleCount = addedRuleCount
+        self.replacedOwnedRuleCount = replacedOwnedRuleCount
+        self.preservedRuleCount = preservedRuleCount
+        self.conflictCount = conflictCount
+    }
+}
+
 public struct KarabinerRestoreResult: Equatable, Sendable {
     public let restoredURL: URL
     public let preRestoreBackupURL: URL
@@ -154,7 +176,12 @@ public struct KarabinerConfigService: Sendable {
 
     public func applyCustomShortcuts(_ definitions: [ShortcutDefinition]) throws -> KarabinerApplyResult {
         let rules = try definitions.map(customRuleDictionary)
-        return try applyRules(rules, replacing: .karabinerPlusCustom)
+        return try applyPlan(planRules(rules, replacing: .karabinerPlusCustom))
+    }
+
+    public func previewCustomShortcutApply(_ definitions: [ShortcutDefinition]) throws -> KarabinerApplySummary {
+        let rules = try definitions.map(customRuleDictionary)
+        return try planRules(rules, replacing: .karabinerPlusCustom).summary
     }
 
     public func readCustomShortcuts() throws -> [ShortcutDefinition] {
@@ -172,13 +199,13 @@ public struct KarabinerConfigService: Sendable {
 
     public func applyRecommendedPacks(_ ids: [String]) throws -> KarabinerApplyResult {
         let rules = recommendedRuleDictionaries(for: ids)
-        return try applyRules(rules, replacing: .karabinerPlusRecommended)
+        return try applyPlan(planRules(rules, replacing: .karabinerPlusRecommended))
     }
 
-    private func applyRules(
+    private func planRules(
         _ newRules: [[String: Any]],
         replacing category: OwnedRuleCategory
-    ) throws -> KarabinerApplyResult {
+    ) throws -> KarabinerApplyPlan {
         guard FileManager.default.fileExists(atPath: configURL.path) else {
             throw KarabinerConfigServiceError.configNotFound
         }
@@ -201,19 +228,34 @@ public struct KarabinerConfigService: Sendable {
             throw KarabinerConfigServiceError.conflicts(conflicts)
         }
 
-        let mergedRules = existingRules.filter { !category.owns(rule: $0) } + newRules
+        let ownedRules = existingRules.filter { category.owns(rule: $0) }
+        let preservedRules = existingRules.filter { !category.owns(rule: $0) }
+        let mergedRules = preservedRules + newRules
         var complex = profile["complex_modifications"] as? [String: Any] ?? [:]
         complex["rules"] = mergedRules
         profile["complex_modifications"] = complex
         profiles[selectedIndex] = profile
         config["profiles"] = profiles
 
+        return KarabinerApplyPlan(
+            config: config,
+            summary: KarabinerApplySummary(
+                activeProfileName: profile["name"] as? String,
+                addedRuleCount: newRules.count,
+                replacedOwnedRuleCount: ownedRules.count,
+                preservedRuleCount: preservedRules.count,
+                conflictCount: 0
+            )
+        )
+    }
+
+    private func applyPlan(_ plan: KarabinerApplyPlan) throws -> KarabinerApplyResult {
         let backupURL = try backupConfig()
-        try writeConfig(config)
+        try writeConfig(plan.config)
 
         return KarabinerApplyResult(
             backupURL: backupURL,
-            activeProfileName: profile["name"] as? String
+            activeProfileName: plan.summary.activeProfileName
         )
     }
 
@@ -281,14 +323,49 @@ public struct KarabinerConfigService: Sendable {
 
         let sourceModifiers = (from["modifiers"] as? [String: Any])?["mandatory"] as? [String] ?? []
         let outputModifiers = to["modifiers"] as? [String] ?? []
+        let appBundleIdentifier = appBundleIdentifier(from: manipulator)
 
         return ShortcutDefinition(
             name: name,
             sourceKey: sourceKey,
             sourceModifiers: sourceModifiers,
             outputKey: outputKey,
-            outputModifiers: outputModifiers
+            outputModifiers: outputModifiers,
+            appBundleIdentifier: appBundleIdentifier
         )
+    }
+
+    private func appBundleIdentifier(from manipulator: [String: Any]) -> String {
+        guard let conditions = manipulator["conditions"] as? [[String: Any]] else {
+            return ""
+        }
+
+        for condition in conditions where condition["type"] as? String == "frontmost_application_if" {
+            guard
+                let bundleIdentifiers = condition["bundle_identifiers"] as? [String],
+                let firstIdentifier = bundleIdentifiers.first
+            else {
+                continue
+            }
+
+            return unescapeExactBundleIdentifier(firstIdentifier)
+        }
+
+        return ""
+    }
+
+    private func unescapeExactBundleIdentifier(_ value: String) -> String {
+        var result = value
+        if result.hasPrefix("^") {
+            result.removeFirst()
+        }
+        if result.hasSuffix("$") {
+            result.removeLast()
+        }
+
+        return result
+            .replacingOccurrences(of: "\\.", with: ".")
+            .replacingOccurrences(of: "\\-", with: "-")
     }
 
     private func recommendedRuleDictionaries(for ids: [String]) -> [[String: Any]] {
@@ -639,6 +716,11 @@ public struct KarabinerConfigService: Sendable {
             return nil
         }
     }
+}
+
+private struct KarabinerApplyPlan {
+    let config: [String: Any]
+    let summary: KarabinerApplySummary
 }
 
 private struct TriggerEntry {

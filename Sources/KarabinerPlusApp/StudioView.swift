@@ -11,9 +11,15 @@ struct StudioView: View {
                 if !model.hasKarabinerConfig {
                     setupGate
                 }
+                if model.isFirstShortcutWizardActive {
+                    firstShortcutWizardCard
+                }
                 templatesCard
                 editorCard
                 previewCard
+                if let summary = model.pendingShortcutSummary {
+                    applySummaryCard(summary)
+                }
                 savedShortcutsCard
                 if !model.studioMessage.isEmpty {
                     infoCard(title: "Latest update", message: model.studioMessage)
@@ -90,6 +96,21 @@ struct StudioView: View {
         }
     }
 
+    private var firstShortcutWizardCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                Label("First shortcut wizard", systemImage: "wand.and.stars")
+                    .font(.title3.weight(.semibold))
+
+                HStack(alignment: .top, spacing: 14) {
+                    wizardStep(number: "1", title: "Start safe", detail: "Caps Lock to Escape is loaded.")
+                    wizardStep(number: "2", title: "Review", detail: "Check scope, preview, and warnings.")
+                    wizardStep(number: "3", title: "Apply", detail: "Confirm the summary after backup protection is clear.")
+                }
+            }
+        }
+    }
+
     private var editorCard: some View {
         card {
             VStack(alignment: .leading, spacing: 16) {
@@ -106,6 +127,8 @@ struct StudioView: View {
                 TextField("Name this shortcut", text: $model.draft.name)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 360)
+
+                scopeControls
 
                 HStack(alignment: .top, spacing: 28) {
                     VStack(alignment: .leading, spacing: 12) {
@@ -131,18 +154,55 @@ struct StudioView: View {
                 }
 
                 HStack(spacing: 12) {
-                    Button("Save Shortcut") {
-                        model.applyShortcutDraft()
+                    Button("Review Apply Summary") {
+                        model.prepareShortcutDraftApply()
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!model.draftCanApply)
 
-                    Text(model.draftCanApply ? "A backup will be created first." : disabledReason)
+                    Text(model.draftCanApply ? "No config changes until you confirm the summary." : disabledReason)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
             }
         }
+    }
+
+    private var scopeControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Where it works")
+                .font(.headline)
+
+            HStack(spacing: 10) {
+                if model.draft.definition.isAppSpecific {
+                    Button("Everywhere") {
+                        model.clearDraftAppScope()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Current App") {
+                        model.useFrontmostAppForDraftScope()
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Button("Everywhere") {
+                        model.clearDraftAppScope()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button("Current App") {
+                        model.useFrontmostAppForDraftScope()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Text(model.draftScopeDescription)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: 680, alignment: .leading)
     }
 
     private var previewCard: some View {
@@ -155,7 +215,7 @@ struct StudioView: View {
                 Text(model.draft.preview)
                     .font(.headline)
 
-                Text("Applies everywhere on this Mac in the \(model.setupStatus?.activeProfileName ?? "active") Karabiner profile.")
+                Text("\(model.draftScopeDescription) in the \(model.setupStatus?.activeProfileName ?? "active") Karabiner profile.")
                     .foregroundStyle(.secondary)
 
                 if definition.isNoOp {
@@ -196,6 +256,9 @@ struct StudioView: View {
                                     .font(.headline)
                                 Text(model.preview(for: definition))
                                     .foregroundStyle(.secondary)
+                                Text(model.scopeDescription(for: definition))
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
                             }
 
                             Spacer()
@@ -206,7 +269,9 @@ struct StudioView: View {
                                     sourceKey: definition.sourceKey,
                                     sourceModifiers: Set(definition.sourceModifiers),
                                     outputKey: definition.outputKey,
-                                    outputModifiers: Set(definition.outputModifiers)
+                                    outputModifiers: Set(definition.outputModifiers),
+                                    appBundleIdentifier: definition.appBundleIdentifier,
+                                    appName: definition.appName
                                 )
                             }
                             .buttonStyle(.bordered)
@@ -294,6 +359,81 @@ struct StudioView: View {
             }
         }
         .frame(width: 190, alignment: .leading)
+    }
+
+    private func applySummaryCard(_ summary: KarabinerApplySummary) -> some View {
+        card {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: model.pendingShortcutIsCurrent ? "doc.text.magnifyingglass" : "exclamationmark.triangle")
+                        .font(.title2)
+                        .foregroundStyle(model.pendingShortcutIsCurrent ? Color.secondary : Color.orange)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Apply summary")
+                            .font(.title3.weight(.semibold))
+                        Text(model.pendingShortcutIsCurrent ? "Karabiner+ has not written anything yet." : "The shortcut changed after this summary was created.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 12) {
+                    summaryMetric("Write", value: summary.addedRuleCount)
+                    summaryMetric("Replace", value: summary.replacedOwnedRuleCount)
+                    summaryMetric("Preserve", value: summary.preservedRuleCount)
+                    summaryMetric("Conflicts", value: summary.conflictCount)
+                }
+
+                Text("Profile: \(summary.activeProfileName ?? "active profile"). A backup will be created immediately before writing.")
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 12) {
+                    Button("Apply to Karabiner") {
+                        model.confirmPendingShortcutApply()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!model.pendingShortcutIsCurrent)
+
+                    Button("Cancel") {
+                        model.cancelPendingShortcutApply()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private func summaryMetric(_ label: String, value: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(value)")
+                .font(.title2.weight(.semibold))
+            Text(label)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func wizardStep(number: String, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(number)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(.primary, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                Text(detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {

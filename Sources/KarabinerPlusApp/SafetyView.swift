@@ -99,6 +99,7 @@ struct SafetyView: View {
                 bullet("Custom and recommended shortcut writes require an existing ~/.config/karabiner/karabiner.json.")
                 bullet("Each apply action creates a timestamped backup before writing.")
                 bullet("Create saves the full Karabiner+ Studio shortcut list instead of overwriting one shortcut at a time.")
+                bullet("App-specific shortcuts use Karabiner frontmost-app conditions instead of changing the same shortcut everywhere.")
                 bullet("Risky global shortcuts and plain-key remaps are surfaced before apply.")
             }
         }

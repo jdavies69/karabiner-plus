@@ -25,11 +25,17 @@ mkdir -p "${release_dir}"
 cat > "${release_dir}/README-FIRST.txt" <<EOF
 Karabiner+ ${version} (${commit})
 
-This is an unsigned public-alpha build.
+This is an unsigned, not-notarized alpha build.
 
 Karabiner+ is an unofficial companion app for the official Karabiner-Elements app. It does not include the Karabiner keyboard driver.
 
-If macOS blocks the app because it is unsigned, right-click Karabiner+.app and choose Open. For the smoothest public release, future builds should be signed and notarized with an Apple Developer ID.
+What's included:
+- first-shortcut wizard
+- global and app-specific custom shortcuts
+- visual apply summaries before custom shortcut writes
+- local backup restore and undo
+
+macOS Gatekeeper may warn that the developer cannot be verified and may block first launch. Only open this app if you trust this source. For this alpha, the usual workaround is to right-click Karabiner+.app and choose Open. For the smoothest public release, future builds should be signed and notarized with an Apple Developer ID.
 
 Source:
 https://github.com/jdavies69/karabiner-plus

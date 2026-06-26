@@ -56,11 +56,11 @@ struct StartView: View {
                 actionCard(
                     icon: "plus.square.on.square",
                     title: "Create one shortcut",
-                    body: "Start from a safe template, preview the exact remap, then save it with a backup.",
-                    buttonTitle: "Open Create",
+                    body: "Use the first-shortcut wizard, preview the exact remap, then apply it with a backup.",
+                    buttonTitle: model.savedShortcuts.isEmpty ? "Start Wizard" : "Open Create",
                     isPrimary: model.hasKarabinerConfig
                 ) {
-                    model.navigate(to: .studio)
+                    openCreate()
                 }
 
                 actionCard(
@@ -103,7 +103,11 @@ struct StartView: View {
                 Spacer()
 
                 Button(primaryStep.buttonTitle) {
-                    model.navigate(to: primaryStep.section)
+                    if primaryStep.id == "first-shortcut" {
+                        model.startFirstShortcutWizard()
+                    } else {
+                        model.navigate(to: primaryStep.section)
+                    }
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -115,7 +119,11 @@ struct StartView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
                 ForEach(model.onboardingSteps) { step in
                     Button {
-                        model.navigate(to: step.section)
+                        if step.id == "first-shortcut" {
+                            model.startFirstShortcutWizard()
+                        } else {
+                            model.navigate(to: step.section)
+                        }
                     } label: {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: step.isComplete ? "checkmark.circle.fill" : "circle")
@@ -204,5 +212,13 @@ struct StartView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(.regularMaterial, in: Capsule())
+    }
+
+    private func openCreate() {
+        if model.savedShortcuts.isEmpty {
+            model.startFirstShortcutWizard()
+        } else {
+            model.navigate(to: .studio)
+        }
     }
 }

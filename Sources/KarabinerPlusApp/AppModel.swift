@@ -50,6 +50,8 @@ final class AppModel: ObservableObject {
         var sourceModifiers: Set<String> = []
         var outputKey = "escape"
         var outputModifiers: Set<String> = []
+        var appBundleIdentifier = ""
+        var appName = ""
 
         var definition: ShortcutDefinition {
             ShortcutDefinition(
@@ -57,7 +59,9 @@ final class AppModel: ObservableObject {
                 sourceKey: sourceKey,
                 sourceModifiers: sourceModifiers.sorted(),
                 outputKey: outputKey,
-                outputModifiers: outputModifiers.sorted()
+                outputModifiers: outputModifiers.sorted(),
+                appBundleIdentifier: appBundleIdentifier,
+                appName: appName
             )
         }
 
@@ -94,6 +98,9 @@ final class AppModel: ObservableObject {
     @Published var trackingError = ""
     @Published var draft = ShortcutDraft()
     @Published var captureTarget: CaptureTarget?
+    @Published var isFirstShortcutWizardActive = false
+    @Published var pendingShortcutSummary: KarabinerApplySummary?
+    @Published var pendingShortcutDefinition: ShortcutDefinition?
     @Published var savedShortcuts: [ShortcutDefinition] = []
     @Published var backupHistory: [KarabinerBackup] = []
     @Published var selectedBackupID = ""
@@ -128,7 +135,9 @@ final class AppModel: ObservableObject {
                 sourceKey: "caps_lock",
                 sourceModifiers: [],
                 outputKey: "escape",
-                outputModifiers: []
+                outputModifiers: [],
+                appBundleIdentifier: "",
+                appName: ""
             )
         ),
         ShortcutTemplate(
@@ -140,7 +149,9 @@ final class AppModel: ObservableObject {
                 sourceKey: "h",
                 sourceModifiers: ["right_command"],
                 outputKey: "left_arrow",
-                outputModifiers: []
+                outputModifiers: [],
+                appBundleIdentifier: "",
+                appName: ""
             )
         ),
         ShortcutTemplate(
@@ -152,7 +163,9 @@ final class AppModel: ObservableObject {
                 sourceKey: "l",
                 sourceModifiers: ["right_command"],
                 outputKey: "right_arrow",
-                outputModifiers: []
+                outputModifiers: [],
+                appBundleIdentifier: "",
+                appName: ""
             )
         ),
         ShortcutTemplate(
@@ -164,7 +177,9 @@ final class AppModel: ObservableObject {
                 sourceKey: "j",
                 sourceModifiers: ["command", "shift"],
                 outputKey: "escape",
-                outputModifiers: []
+                outputModifiers: [],
+                appBundleIdentifier: "",
+                appName: ""
             )
         ),
     ]
@@ -279,6 +294,10 @@ final class AppModel: ObservableObject {
 
     var draftCanApply: Bool {
         hasKarabinerConfig && !draft.definition.name.isEmpty && !draft.definition.isNoOp
+    }
+
+    var pendingShortcutIsCurrent: Bool {
+        pendingShortcutDefinition == draft.definition
     }
 
     var selectedBackup: KarabinerBackup? {
@@ -487,6 +506,10 @@ final class AppModel: ObservableObject {
     }
 
     func applyShortcutDraft() {
+        prepareShortcutDraftApply()
+    }
+
+    func prepareShortcutDraftApply() {
         let definition = draft.definition
 
         guard !definition.name.isEmpty else {
@@ -501,14 +524,46 @@ final class AppModel: ObservableObject {
 
         do {
             let shortcuts = replacingShortcut(definition, in: savedShortcuts)
+            pendingShortcutSummary = try service.previewCustomShortcutApply(shortcuts)
+            pendingShortcutDefinition = definition
+            studioMessage = "Review the apply summary, then confirm when you are ready."
+        } catch {
+            pendingShortcutSummary = nil
+            pendingShortcutDefinition = nil
+            studioMessage = "Could not preview shortcut apply: \(friendlyMessage(for: error))"
+        }
+    }
+
+    func confirmPendingShortcutApply() {
+        guard let definition = pendingShortcutDefinition, let pendingShortcutSummary else {
+            studioMessage = "Review the apply summary before writing to Karabiner."
+            return
+        }
+
+        guard pendingShortcutIsCurrent else {
+            studioMessage = "The shortcut changed after the summary was created. Review it again before applying."
+            return
+        }
+
+        do {
+            let shortcuts = replacingShortcut(definition, in: savedShortcuts)
             let result = try service.applyCustomShortcuts(shortcuts)
             lastUndoBackup = KarabinerBackup(url: result.backupURL, modifiedAt: Date())
             savedShortcuts = shortcuts
-            studioMessage = "Saved \(definition.name) to \(result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
+            self.pendingShortcutSummary = nil
+            pendingShortcutDefinition = nil
+            isFirstShortcutWizardActive = false
+            studioMessage = "Saved \(definition.name) to \(pendingShortcutSummary.activeProfileName ?? result.activeProfileName ?? "your active profile"). Backup: \(result.backupURL.lastPathComponent)"
             refreshStatus()
         } catch {
             studioMessage = "Could not save shortcut: \(friendlyMessage(for: error))"
         }
+    }
+
+    func cancelPendingShortcutApply() {
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
+        studioMessage = "Apply cancelled. No Karabiner config changes were made."
     }
 
     func deleteShortcut(_ definition: ShortcutDefinition) {
@@ -529,12 +584,26 @@ final class AppModel: ObservableObject {
 
     func useTemplate(_ template: ShortcutTemplate) {
         draft = template.draft
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
         studioMessage = "Loaded template: \(template.title). Review it, then save it to Karabiner."
     }
 
     func resetDraft() {
         draft = ShortcutDraft()
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
+        isFirstShortcutWizardActive = false
         studioMessage = "Started a fresh shortcut."
+    }
+
+    func startFirstShortcutWizard() {
+        draft = ShortcutDraft()
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
+        isFirstShortcutWizardActive = true
+        studioMessage = "First shortcut wizard started. Caps Lock to Escape is loaded as a safe first shortcut."
+        navigate(to: .studio)
     }
 
     func beginShortcutCapture(_ target: CaptureTarget) {
@@ -587,6 +656,32 @@ final class AppModel: ObservableObject {
         NSWorkspace.shared.open(service.backupDirectoryURL)
     }
 
+    func useFrontmostAppForDraftScope() {
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            studioMessage = "Karabiner+ could not read the current frontmost app."
+            return
+        }
+
+        guard let bundleIdentifier = app.bundleIdentifier, !bundleIdentifier.isEmpty else {
+            studioMessage = "The current app does not expose a bundle identifier, so Karabiner+ cannot scope a shortcut to it."
+            return
+        }
+
+        draft.appBundleIdentifier = bundleIdentifier
+        draft.appName = app.localizedName ?? bundleIdentifier
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
+        studioMessage = "Shortcut scope set to \(draft.appName)."
+    }
+
+    func clearDraftAppScope() {
+        draft.appBundleIdentifier = ""
+        draft.appName = ""
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
+        studioMessage = "Shortcut scope set to everywhere."
+    }
+
     func label(forKey key: String) -> String {
         Self.formatKey(key)
     }
@@ -607,6 +702,22 @@ final class AppModel: ObservableObject {
         let input = shortcutLabel(modifiers: definition.sourceModifiers, key: definition.sourceKey)
         let output = shortcutLabel(modifiers: definition.outputModifiers, key: definition.outputKey)
         return "\(input) -> \(output)"
+    }
+
+    func scopeDescription(for definition: ShortcutDefinition) -> String {
+        guard definition.isAppSpecific else {
+            return "Everywhere"
+        }
+
+        if !definition.appName.isEmpty {
+            return "Only in \(definition.appName) (\(definition.appBundleIdentifier))"
+        }
+
+        return "Only in \(definition.appBundleIdentifier)"
+    }
+
+    var draftScopeDescription: String {
+        scopeDescription(for: draft.definition)
     }
 
     func reason(for recommendation: Recommendation) -> String {
@@ -681,6 +792,8 @@ final class AppModel: ObservableObject {
             draft.outputModifiers = Set(captured.modifiers)
         }
 
+        pendingShortcutSummary = nil
+        pendingShortcutDefinition = nil
         studioMessage = "Captured \(captureTarget.label): \(shortcutLabel(modifiers: captured.modifiers, key: captured.key))."
         stopShortcutCapture()
     }

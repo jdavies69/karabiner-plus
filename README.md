@@ -7,12 +7,13 @@ It does not bundle, fork, or replace Karabiner-Elements. Karabiner-Elements stil
 ## What You Get
 
 - A native windowed macOS app, not a menu bar item.
-- Start screen with the clearest next action.
+- Start screen with setup progress and a first-shortcut wizard for the first safe remap.
 - Connect checks official Karabiner-Elements, config readiness, permissions, and backups.
 - Backup before every config write.
 - Safety recovery center for backup history, restore, and undoing the latest Karabiner+ change.
 - Shortcut Coach: opt-in local active-app usage tracking while the app is open.
-- Create: build custom remaps from safe templates, manual pickers, or in-app shortcut capture without editing Karabiner JSON.
+- Create: build global or app-specific remaps from safe templates, manual pickers, or in-app shortcut capture without editing Karabiner JSON.
+- Visual apply summaries show what will be written, replaced, preserved, or blocked before custom shortcut writes.
 - Saved Studio shortcuts are preserved as a list instead of being overwritten one at a time.
 - App-aware recommendation packs for Slack, browsers, Messages, media apps, and Preview.
 - Conservative conflict checks before writes.
@@ -48,7 +49,7 @@ You can make an unsigned zip for GitHub Releases:
 ./scripts/package-release.sh
 ```
 
-The zip lands in `dist/`. Because there is no Apple Developer ID yet, macOS may require users to right-click `Karabiner+.app` and choose `Open`. A smoother public release needs Developer ID signing and Apple notarization.
+The zip lands in `dist/`. This alpha zip is unsigned and not notarized. macOS Gatekeeper may warn that the developer cannot be verified and may block first launch. Only open it if you trust this source. For this alpha, the usual workaround is to right-click `Karabiner+.app` and choose `Open`; a smoother public release needs Developer ID signing and Apple notarization.
 
 ## Updating
 
